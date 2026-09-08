@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
 <title>Wild Ones Remake - Beta 0.8</title>
 
 <style>
@@ -39,28 +38,25 @@ body {
   z-index: 10;
 }
 
-#turn {
+#turn,
+#weapon {
   position: fixed;
-  top: 45px;
   left: 50%;
   transform: translateX(-50%);
   color: white;
-  font-size: 20px;
   font-weight: bold;
   text-shadow: 2px 2px 4px black;
   z-index: 10;
 }
 
+#turn {
+  top: 45px;
+  font-size: 20px;
+}
+
 #weapon {
-  position: fixed;
   top: 75px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: white;
   font-size: 17px;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px black;
-  z-index: 10;
 }
 
 #power {
@@ -99,59 +95,45 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 10px;
   z-index: 10;
 }
 
 button {
-  width: 65px;
-  height: 65px;
+  width: 62px;
+  height: 62px;
   border: 0;
   border-radius: 50%;
-  font-size: 26px;
+  font-size: 25px;
   background: rgba(255,255,255,0.9);
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-}
-
-#fire {
-  background: #ffb300;
-  width: 78px;
-  height: 78px;
 }
 
 #jump {
   background: #58a6ff;
   color: white;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
 }
 
 #weaponButton {
   background: #4b7bec;
   color: white;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
 }
 
-#restart {
-  position: fixed;
-  top: 55%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 160px;
-  height: 55px;
-  border-radius: 15px;
-  font-size: 20px;
-  font-weight: bold;
-  display: none;
-  z-index: 30;
+#fire {
+  background: #ffb300;
+  width: 76px;
+  height: 76px;
 }
 
 #message {
   position: fixed;
   top: 43%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%,-50%);
   color: white;
   font-size: 35px;
   font-weight: bold;
@@ -171,6 +153,20 @@ button {
   text-shadow: 3px 3px 5px black;
   display: none;
   z-index: 25;
+}
+
+#restart {
+  position: fixed;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  width: 160px;
+  height: 55px;
+  border-radius: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  display: none;
+  z-index: 30;
 }
 </style>
 </head>
@@ -200,55 +196,29 @@ button {
 </div>
 
 <div id="controls">
-
   <button id="left">◀</button>
-
   <button id="jump">SALTAR</button>
-
-  <button id="weaponButton">
-    CAMBIAR
-  </button>
-
+  <button id="weaponButton">CAMBIAR</button>
   <button id="fire">💥</button>
-
   <button id="right">▶</button>
-
 </div>
 
 <div id="message"></div>
-
 <div id="damageText"></div>
-
 <button id="restart">REINICIAR</button>
 
 <script>
 
-const canvas =
-  document.getElementById("game");
-
-const ctx =
-  canvas.getContext("2d");
-
-
-/* =========================
-   TAMAÑO
-========================= */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
 function resize() {
-
-  canvas.width =
-    window.innerWidth;
-
-  canvas.height =
-    window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 
 resize();
-
-window.addEventListener(
-  "resize",
-  resize
-);
+window.addEventListener("resize", resize);
 
 
 /* =========================
@@ -256,40 +226,32 @@ window.addEventListener(
 ========================= */
 
 const worldWidth = 3000;
-
 let cameraX = 0;
 
 
 /* =========================
-   PERSONAJE
+   JUGADOR
 ========================= */
 
 const player = {
-
   x: 250,
-
   y: 0,
-
   radius: 25,
-
   health: 100,
-
   vx: 0,
-
   vy: 0,
-
   onGround: false
 };
 
 
+/* =========================
+   ENEMIGO
+========================= */
+
 const enemy = {
-
   x: 2500,
-
   y: 0,
-
   radius: 25,
-
   health: 100
 };
 
@@ -299,7 +261,6 @@ const enemy = {
 ========================= */
 
 const weapons = [
-
   {
     name: "BÁSICA",
     damage: 60,
@@ -307,7 +268,6 @@ const weapons = [
     color: "#555",
     speed: 1
   },
-
   {
     name: "BOMBA",
     damage: 75,
@@ -315,7 +275,6 @@ const weapons = [
     color: "#222",
     speed: 0.85
   },
-
   {
     name: "MEGA",
     damage: 100,
@@ -323,7 +282,6 @@ const weapons = [
     color: "#ff3b00",
     speed: 0.7
   }
-
 ];
 
 let weaponIndex = 0;
@@ -334,23 +292,17 @@ let weaponIndex = 0;
 ========================= */
 
 let projectile = null;
-
 let enemyProjectile = null;
-
 let explosion = null;
 
 let charging = false;
-
 let power = 0.1;
-
 let aimAngle = -0.65;
 
 let gameOver = false;
-
 let turn = "player";
 
 let enemyThinking = false;
-
 let enemyTimer = 0;
 
 
@@ -360,11 +312,9 @@ let enemyTimer = 0;
 
 function groundY(x) {
 
-  return canvas.height * 0.72 +
-
-    Math.sin(x * 0.015) * 25 +
-
-    Math.sin(x * 0.006) * 35;
+  return canvas.height * 0.72
+    + Math.sin(x * 0.015) * 25
+    + Math.sin(x * 0.006) * 35;
 }
 
 
@@ -374,26 +324,19 @@ function groundY(x) {
 
 function updateCamera() {
 
-  cameraX =
-    player.x -
-    canvas.width * 0.35;
+  cameraX = player.x - canvas.width * 0.35;
 
   if (cameraX < 0) {
-
     cameraX = 0;
   }
 
-  const maxCamera =
-    worldWidth -
-    canvas.width;
+  const maxCamera = Math.max(
+    0,
+    worldWidth - canvas.width
+  );
 
-  if (
-    cameraX >
-    maxCamera
-  ) {
-
-    cameraX =
-      maxCamera;
+  if (cameraX > maxCamera) {
+    cameraX = maxCamera;
   }
 }
 
@@ -406,10 +349,7 @@ function drawGround() {
 
   ctx.beginPath();
 
-  ctx.moveTo(
-    0,
-    canvas.height
-  );
+  ctx.moveTo(0, canvas.height);
 
   for (
     let screenX = 0;
@@ -417,9 +357,7 @@ function drawGround() {
     screenX += 5
   ) {
 
-    const worldX =
-      screenX +
-      cameraX;
+    const worldX = screenX + cameraX;
 
     ctx.lineTo(
       screenX,
@@ -427,24 +365,13 @@ function drawGround() {
     );
   }
 
-  ctx.lineTo(
-    canvas.width,
-    canvas.height
-  );
-
+  ctx.lineTo(canvas.width, canvas.height);
   ctx.closePath();
 
-  ctx.fillStyle =
-    "#579443";
-
+  ctx.fillStyle = "#579443";
   ctx.fill();
 
-
-  /* líneas del terreno */
-
-  ctx.strokeStyle =
-    "#396d2c";
-
+  ctx.strokeStyle = "#396d2c";
   ctx.lineWidth = 3;
 
   ctx.beginPath();
@@ -455,26 +382,13 @@ function drawGround() {
     screenX += 5
   ) {
 
-    const worldX =
-      screenX +
-      cameraX;
-
-    const y =
-      groundY(worldX);
+    const worldX = screenX + cameraX;
+    const y = groundY(worldX);
 
     if (screenX === 0) {
-
-      ctx.moveTo(
-        screenX,
-        y
-      );
-
+      ctx.moveTo(screenX, y);
     } else {
-
-      ctx.lineTo(
-        screenX,
-        y
-      );
+      ctx.lineTo(screenX, y);
     }
   }
 
@@ -493,26 +407,13 @@ function drawAnimal(
   health
 ) {
 
-  const x =
-    worldX -
-    cameraX;
+  const x = worldX - cameraX;
 
-
-  ctx.fillStyle =
-    bodyColor;
+  ctx.fillStyle = bodyColor;
 
   ctx.beginPath();
-
-  ctx.arc(
-    x,
-    y,
-    25,
-    0,
-    Math.PI * 2
-  );
-
+  ctx.arc(x, y, 25, 0, Math.PI * 2);
   ctx.fill();
-
 
   /* orejas */
 
@@ -536,11 +437,9 @@ function drawAnimal(
 
   ctx.fill();
 
-
   /* ojos */
 
-  ctx.fillStyle =
-    "white";
+  ctx.fillStyle = "white";
 
   ctx.beginPath();
 
@@ -561,12 +460,10 @@ function drawAnimal(
   );
 
   ctx.fill();
-
 
   /* pupilas */
 
-  ctx.fillStyle =
-    "#111";
+  ctx.fillStyle = "#111";
 
   ctx.beginPath();
 
@@ -588,11 +485,9 @@ function drawAnimal(
 
   ctx.fill();
 
+  /* vida */
 
-  /* barra de vida */
-
-  ctx.fillStyle =
-    "#222";
+  ctx.fillStyle = "#222";
 
   ctx.fillRect(
     x - 30,
@@ -601,17 +496,12 @@ function drawAnimal(
     6
   );
 
-  ctx.fillStyle =
-    "#e33";
+  ctx.fillStyle = "#e33";
 
   ctx.fillRect(
     x - 30,
     y - 42,
-    60 *
-    Math.max(
-      0,
-      health
-    ) / 100,
+    60 * Math.max(0, health) / 100,
     6
   );
 }
@@ -630,62 +520,30 @@ function drawAim() {
     turn !== "player"
   ) return;
 
+  const length = 120 + power * 100;
 
-  const weapon =
-    weapons[weaponIndex];
-
-
-  const length =
-    120 +
-    power * 100;
-
-
-  const playerScreenX =
-    player.x -
-    cameraX;
-
+  const px = player.x - cameraX;
 
   const endX =
-    playerScreenX +
-    Math.cos(aimAngle) *
-    length;
-
+    px + Math.cos(aimAngle) * length;
 
   const endY =
-    player.y +
-    Math.sin(aimAngle) *
-    length;
+    player.y + Math.sin(aimAngle) * length;
 
-
-  ctx.strokeStyle =
-    "white";
-
+  ctx.strokeStyle = "white";
   ctx.lineWidth = 3;
-
-  ctx.setLineDash([
-    8,
-    8
-  ]);
+  ctx.setLineDash([8,8]);
 
   ctx.beginPath();
 
-  ctx.moveTo(
-    playerScreenX,
-    player.y
-  );
-
-  ctx.lineTo(
-    endX,
-    endY
-  );
+  ctx.moveTo(px, player.y);
+  ctx.lineTo(endX, endY);
 
   ctx.stroke();
 
   ctx.setLineDash([]);
 
-
-  ctx.fillStyle =
-    "#ffcc00";
+  ctx.fillStyle = "#ffcc00";
 
   ctx.beginPath();
 
@@ -714,58 +572,30 @@ function drawTrajectory() {
     turn !== "player"
   ) return;
 
-
-  const weapon =
-    weapons[weaponIndex];
-
+  const weapon = weapons[weaponIndex];
 
   const speed =
-    (5 + power * 12) *
-    weapon.speed;
+    (5 + power * 12) * weapon.speed;
 
+  let px = player.x;
+  let py = player.y;
 
-  let px =
-    player.x;
+  let vx = Math.cos(aimAngle) * speed;
+  let vy = Math.sin(aimAngle) * speed;
 
-  let py =
-    player.y;
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
 
-
-  let vx =
-    Math.cos(aimAngle) *
-    speed;
-
-  let vy =
-    Math.sin(aimAngle) *
-    speed;
-
-
-  ctx.fillStyle =
-    "rgba(255,255,255,0.7)";
-
-
-  for (
-    let i = 0;
-    i < 30;
-    i++
-  ) {
+  for (let i = 0; i < 30; i++) {
 
     px += vx;
-
     py += vy;
 
     vy += 0.35;
 
-
-    const screenX =
-      px -
-      cameraX;
-
-
     ctx.beginPath();
 
     ctx.arc(
-      screenX,
+      px - cameraX,
       py,
       3,
       0,
@@ -785,37 +615,22 @@ function drawExplosion() {
 
   if (!explosion) return;
 
-
   const progress =
-    explosion.time /
-    explosion.duration;
-
+    explosion.time / explosion.duration;
 
   const radius =
-    explosion.maxRadius *
-    progress;
-
-
-  const screenX =
-    explosion.x -
-    cameraX;
-
+    explosion.maxRadius * progress;
 
   ctx.save();
 
-  ctx.globalAlpha =
-    1 -
-    progress;
+  ctx.globalAlpha = 1 - progress;
 
-
-  ctx.fillStyle =
-    explosion.color;
-
+  ctx.fillStyle = explosion.color;
 
   ctx.beginPath();
 
   ctx.arc(
-    screenX,
+    explosion.x - cameraX,
     explosion.y,
     radius,
     0,
@@ -824,17 +639,13 @@ function drawExplosion() {
 
   ctx.fill();
 
-
-  ctx.strokeStyle =
-    "#ffcc00";
-
+  ctx.strokeStyle = "#ffcc00";
   ctx.lineWidth = 8;
-
 
   ctx.beginPath();
 
   ctx.arc(
-    screenX,
+    explosion.x - cameraX,
     explosion.y,
     radius,
     0,
@@ -842,7 +653,6 @@ function drawExplosion() {
   );
 
   ctx.stroke();
-
 
   ctx.restore();
 }
@@ -860,160 +670,88 @@ function createExplosion(
 ) {
 
   explosion = {
-
     x: x,
-
     y: y,
-
     time: 0,
-
     duration: 30,
-
-    maxRadius:
-      weapon.radius,
-
-    color:
-      weapon.color
+    maxRadius: weapon.radius,
+    color: weapon.color
   };
 
+  if (attacker === "player") {
 
-  if (
-    attacker === "player"
-  ) {
+    const distance = Math.hypot(
+      x - enemy.x,
+      y - enemy.y
+    );
 
-    const distance =
-      Math.hypot(
-        x - enemy.x,
-        y - enemy.y
-      );
-
-
-    if (
-      distance <
-      weapon.radius
-    ) {
+    if (distance < weapon.radius) {
 
       const multiplier =
-        1 -
-        distance /
-        weapon.radius;
+        1 - distance / weapon.radius;
 
+      const damage = Math.round(
+        weapon.damage * multiplier
+      );
 
-      const damage =
-        Math.round(
-          weapon.damage *
-          multiplier
-        );
+      enemy.health -= damage;
 
-
-      enemy.health -=
-        damage;
-
-
-      if (
-        enemy.health < 0
-      ) {
-
+      if (enemy.health < 0) {
         enemy.health = 0;
       }
 
+      showDamage(damage);
 
-      showDamage(
-        damage
-      );
-
-
-      if (
-        enemy.health <= 0
-      ) {
+      if (enemy.health <= 0) {
 
         gameOver = true;
 
-        showMessage(
-          "¡VICTORIA!"
-        );
+        showMessage("¡VICTORIA!");
 
-        document
-          .getElementById(
-            "restart"
-          )
-          .style.display =
-          "block";
+        document.getElementById(
+          "restart"
+        ).style.display = "block";
       }
     }
   }
 
+  if (attacker === "enemy") {
 
-  if (
-    attacker === "enemy"
-  ) {
+    const distance = Math.hypot(
+      x - player.x,
+      y - player.y
+    );
 
-    const distance =
-      Math.hypot(
-        x - player.x,
-        y - player.y
-      );
-
-
-    if (
-      distance <
-      weapon.radius
-    ) {
+    if (distance < weapon.radius) {
 
       const multiplier =
-        1 -
-        distance /
-        weapon.radius;
+        1 - distance / weapon.radius;
 
+      const damage = Math.round(
+        weapon.damage * multiplier
+      );
 
-      const damage =
-        Math.round(
-          weapon.damage *
-          multiplier
-        );
+      player.health -= damage;
 
-
-      player.health -=
-        damage;
-
-
-      if (
-        player.health < 0
-      ) {
-
+      if (player.health < 0) {
         player.health = 0;
       }
 
+      document.getElementById(
+        "health"
+      ).textContent = player.health;
 
-      document
-        .getElementById(
-          "health"
-        )
-        .textContent =
-        player.health;
+      showDamage(damage);
 
-
-      showDamage(
-        damage
-      );
-
-
-      if (
-        player.health <= 0
-      ) {
+      if (player.health <= 0) {
 
         gameOver = true;
 
-        showMessage(
-          "¡DERROTA!"
-        );
+        showMessage("¡DERROTA!");
 
-        document
-          .getElementById(
-            "restart"
-          )
-          .style.display =
-          "block";
+        document.getElementById(
+          "restart"
+        ).style.display = "block";
       }
     }
   }
@@ -1024,33 +762,19 @@ function createExplosion(
    DAÑO
 ========================= */
 
-function showDamage(
-  damage
-) {
+function showDamage(damage) {
 
   const text =
     document.getElementById(
       "damageText"
     );
 
+  text.textContent = "-" + damage;
+  text.style.display = "block";
 
-  text.textContent =
-    "-" + damage;
-
-
-  text.style.display =
-    "block";
-
-
-  setTimeout(
-    function() {
-
-      text.style.display =
-        "none";
-
-    },
-    700
-  );
+  setTimeout(function() {
+    text.style.display = "none";
+  }, 700);
 }
 
 
@@ -1060,18 +784,14 @@ function showDamage(
 
 function updateExplosion() {
 
-  if (!explosion)
-    return;
-
+  if (!explosion) return;
 
   explosion.time++;
-
 
   if (
     explosion.time >=
     explosion.duration
   ) {
-
     explosion = null;
   }
 }
@@ -1083,34 +803,20 @@ function updateExplosion() {
 
 function updatePlayerProjectile() {
 
-  if (!projectile)
-    return;
+  if (!projectile) return;
 
+  projectile.vy += 0.35;
 
-  projectile.vy +=
-    0.35;
-
-
-  projectile.x +=
-    projectile.vx;
-
-
-  projectile.y +=
-    projectile.vy;
-
+  projectile.x += projectile.vx;
+  projectile.y += projectile.vy;
 
   const distanceToEnemy =
     Math.hypot(
-      projectile.x -
-      enemy.x,
-      projectile.y -
-      enemy.y
+      projectile.x - enemy.x,
+      projectile.y - enemy.y
     );
 
-
-  if (
-    distanceToEnemy < 35
-  ) {
+  if (distanceToEnemy < 35) {
 
     createExplosion(
       projectile.x,
@@ -1119,68 +825,49 @@ function updatePlayerProjectile() {
       projectile.weapon
     );
 
-
     projectile = null;
 
-
     if (!gameOver) {
-
       startEnemyTurn();
     }
 
     return;
   }
-
 
   if (
     projectile &&
     projectile.y >=
-    groundY(
-      projectile.x
-    ) - 5
+    groundY(projectile.x) - 5
   ) {
 
     createExplosion(
       projectile.x,
-      groundY(
-        projectile.x
-      ),
+      groundY(projectile.x),
       "player",
       projectile.weapon
     );
 
-
     projectile = null;
 
-
     if (!gameOver) {
-
       startEnemyTurn();
     }
 
     return;
   }
 
-
   if (
     projectile &&
     (
-      projectile.x <
-      -50 ||
-
-      projectile.x >
-      worldWidth + 50 ||
-
-      projectile.y >
-      canvas.height + 150
+      projectile.x < -100 ||
+      projectile.x > worldWidth + 100 ||
+      projectile.y > canvas.height + 150
     )
   ) {
 
     projectile = null;
 
-
     if (!gameOver) {
-
       startEnemyTurn();
     }
   }
@@ -1193,32 +880,19 @@ function updatePlayerProjectile() {
 
 function startEnemyTurn() {
 
-  if (gameOver)
-    return;
+  if (gameOver) return;
 
+  turn = "enemy";
 
-  turn =
-    "enemy";
+  charging = false;
 
-
-  charging =
-    false;
-
-
-  document
-    .getElementById(
-      "turn"
-    )
-    .textContent =
+  document.getElementById(
+    "turn"
+  ).textContent =
     "TURNO DEL ENEMIGO";
 
-
-  enemyThinking =
-    true;
-
-
-  enemyTimer =
-    90;
+  enemyThinking = true;
+  enemyTimer = 90;
 }
 
 
@@ -1228,57 +902,35 @@ function startEnemyTurn() {
 
 function enemyAttack() {
 
-  if (gameOver)
-    return;
+  if (gameOver) return;
 
+  enemyThinking = false;
 
-  enemyThinking =
-    false;
-
-
-  const dx =
-    player.x -
-    enemy.x;
-
-
-  const dy =
-    player.y -
-    enemy.y;
-
+  const dx = player.x - enemy.x;
+  const dy = player.y - enemy.y;
 
   const angle =
-    Math.atan2(
-      dy,
-      dx
-    );
-
+    Math.atan2(dy, dx);
 
   const speed = 8;
 
-
-  const enemyWeapon =
-    weapons[1];
-
+  const enemyWeapon = weapons[1];
 
   enemyProjectile = {
 
     x:
       enemy.x +
-      Math.cos(angle) *
-      25,
+      Math.cos(angle) * 25,
 
     y:
       enemy.y +
-      Math.sin(angle) *
-      25,
+      Math.sin(angle) * 25,
 
     vx:
-      Math.cos(angle) *
-      speed,
+      Math.cos(angle) * speed,
 
     vy:
-      Math.sin(angle) *
-      speed,
+      Math.sin(angle) * speed,
 
     weapon:
       enemyWeapon
@@ -1292,34 +944,23 @@ function enemyAttack() {
 
 function updateEnemyProjectile() {
 
-  if (!enemyProjectile)
-    return;
+  if (!enemyProjectile) return;
 
-
-  enemyProjectile.vy +=
-    0.35;
-
+  enemyProjectile.vy += 0.35;
 
   enemyProjectile.x +=
     enemyProjectile.vx;
 
-
   enemyProjectile.y +=
     enemyProjectile.vy;
 
-
   const distanceToPlayer =
     Math.hypot(
-      enemyProjectile.x -
-      player.x,
-      enemyProjectile.y -
-      player.y
+      enemyProjectile.x - player.x,
+      enemyProjectile.y - player.y
     );
 
-
-  if (
-    distanceToPlayer < 35
-  ) {
+  if (distanceToPlayer < 35) {
 
     createExplosion(
       enemyProjectile.x,
@@ -1328,68 +969,49 @@ function updateEnemyProjectile() {
       enemyProjectile.weapon
     );
 
-
     enemyProjectile = null;
 
-
     if (!gameOver) {
-
       startPlayerTurn();
     }
 
     return;
   }
-
 
   if (
     enemyProjectile &&
     enemyProjectile.y >=
-    groundY(
-      enemyProjectile.x
-    ) - 5
+    groundY(enemyProjectile.x) - 5
   ) {
 
     createExplosion(
       enemyProjectile.x,
-      groundY(
-        enemyProjectile.x
-      ),
+      groundY(enemyProjectile.x),
       "enemy",
       enemyProjectile.weapon
     );
 
-
     enemyProjectile = null;
 
-
     if (!gameOver) {
-
       startPlayerTurn();
     }
 
     return;
   }
 
-
   if (
     enemyProjectile &&
     (
-      enemyProjectile.x <
-      -50 ||
-
-      enemyProjectile.x >
-      worldWidth + 50 ||
-
-      enemyProjectile.y >
-      canvas.height + 150
+      enemyProjectile.x < -100 ||
+      enemyProjectile.x > worldWidth + 100 ||
+      enemyProjectile.y > canvas.height + 150
     )
   ) {
 
     enemyProjectile = null;
 
-
     if (!gameOver) {
-
       startPlayerTurn();
     }
   }
@@ -1402,32 +1024,19 @@ function updateEnemyProjectile() {
 
 function startPlayerTurn() {
 
-  if (gameOver)
-    return;
+  if (gameOver) return;
 
+  turn = "player";
 
-  turn =
-    "player";
+  document.getElementById(
+    "turn"
+  ).textContent = "TU TURNO";
 
+  power = 0.1;
 
-  document
-    .getElementById(
-      "turn"
-    )
-    .textContent =
-    "TU TURNO";
-
-
-  power =
-    0.1;
-
-
-  document
-    .getElementById(
-      "powerFill"
-    )
-    .style.width =
-    "10%";
+  document.getElementById(
+    "powerFill"
+  ).style.width = "10%";
 }
 
 
@@ -1442,16 +1051,11 @@ function jump() {
     turn !== "player"
   ) return;
 
+  if (player.onGround) {
 
-  if (
-    player.onGround
-  ) {
+    player.vy = -11;
 
-    player.vy =
-      -11;
-
-    player.onGround =
-      false;
+    player.onGround = false;
   }
 }
 
@@ -1462,51 +1066,23 @@ function jump() {
 
 function update() {
 
-  if (gameOver)
-    return;
+  if (gameOver) return;
 
+  player.vy += 0.5;
 
-  /* gravedad */
+  player.x += player.vx;
+  player.y += player.vy;
 
-  player.vy +=
-    0.5;
-
-
-  player.x +=
-    player.vx;
-
-
-  player.y +=
-    player.vy;
-
-
-  /* límites */
-
-  if (
-    player.x < 30
-  ) {
-
+  if (player.x < 30) {
     player.x = 30;
   }
 
-
-  if (
-    player.x >
-    worldWidth - 30
-  ) {
-
-    player.x =
-      worldWidth - 30;
+  if (player.x > worldWidth - 30) {
+    player.x = worldWidth - 30;
   }
 
-
-  /* suelo */
-
   const ground =
-    groundY(
-      player.x
-    );
-
+    groundY(player.x);
 
   if (
     player.y +
@@ -1520,26 +1096,16 @@ function update() {
 
     player.vy = 0;
 
-    player.onGround =
-      true;
+    player.onGround = true;
 
   } else {
 
-    player.onGround =
-      false;
+    player.onGround = false;
   }
 
-
-  /* enemigo */
-
   enemy.y =
-    groundY(
-      enemy.x
-    ) -
+    groundY(enemy.x) -
     enemy.radius;
-
-
-  /* potencia */
 
   if (
     charging &&
@@ -1547,59 +1113,39 @@ function update() {
     turn === "player"
   ) {
 
-    power +=
-      0.012;
-
+    power += 0.012;
 
     if (power > 1) {
-
       power = 1;
     }
 
-
-    document
-      .getElementById(
-        "powerFill"
-      )
-      .style.width =
-      (power * 100) +
-      "%";
+    document.getElementById(
+      "powerFill"
+    ).style.width =
+      (power * 100) + "%";
   }
 
-
   updatePlayerProjectile();
-
   updateEnemyProjectile();
-
   updateExplosion();
 
-
-  if (
-    enemyThinking
-  ) {
+  if (enemyThinking) {
 
     enemyTimer--;
 
-
-    if (
-      enemyTimer <= 0
-    ) {
-
+    if (enemyTimer <= 0) {
       enemyAttack();
     }
   }
 
-
-  player.vx *=
-    0.85;
-
+  player.vx *= 0.85;
 
   updateCamera();
 }
 
 
 /* =========================
-   DIBUJAR
+   DIBUJO
 ========================= */
 
 function draw() {
@@ -1611,9 +1157,6 @@ function draw() {
     canvas.height
   );
 
-
-  /* cielo */
-
   const gradient =
     ctx.createLinearGradient(
       0,
@@ -1622,22 +1165,17 @@ function draw() {
       canvas.height
     );
 
-
   gradient.addColorStop(
     0,
     "#65b8e8"
   );
-
 
   gradient.addColorStop(
     1,
     "#d8f2ff"
   );
 
-
-  ctx.fillStyle =
-    gradient;
-
+  ctx.fillStyle = gradient;
 
   ctx.fillRect(
     0,
@@ -1646,12 +1184,9 @@ function draw() {
     canvas.height
   );
 
-
   /* sol */
 
-  ctx.fillStyle =
-    "#ffd95a";
-
+  ctx.fillStyle = "#ffd95a";
 
   ctx.beginPath();
 
@@ -1665,12 +1200,7 @@ function draw() {
 
   ctx.fill();
 
-
   /* nubes */
-
-  ctx.fillStyle =
-    "rgba(255,255,255,0.75)";
-
 
   drawCloud(
     200 - cameraX * 0.2,
@@ -1678,20 +1208,16 @@ function draw() {
   );
 
   drawCloud(
-    650 - cameraX * 0.2,
-    170
+    700 - cameraX * 0.2,
+    160
   );
 
   drawCloud(
-    1200 - cameraX * 0.2,
-    100
+    1300 - cameraX * 0.2,
+    110
   );
 
-
   drawGround();
-
-
-  /* jugador */
 
   drawAnimal(
     player.x,
@@ -1700,9 +1226,6 @@ function draw() {
     player.health
   );
 
-
-  /* enemigo */
-
   drawAnimal(
     enemy.x,
     enemy.y,
@@ -1710,11 +1233,8 @@ function draw() {
     enemy.health
   );
 
-
   drawAim();
-
   drawTrajectory();
-
 
   /* proyectil jugador */
 
@@ -1723,12 +1243,10 @@ function draw() {
     ctx.fillStyle =
       projectile.weapon.color;
 
-
     ctx.beginPath();
 
     ctx.arc(
-      projectile.x -
-      cameraX,
+      projectile.x - cameraX,
       projectile.y,
       8,
       0,
@@ -1738,7 +1256,6 @@ function draw() {
     ctx.fill();
   }
 
-
   /* proyectil enemigo */
 
   if (enemyProjectile) {
@@ -1746,12 +1263,10 @@ function draw() {
     ctx.fillStyle =
       enemyProjectile.weapon.color;
 
-
     ctx.beginPath();
 
     ctx.arc(
-      enemyProjectile.x -
-      cameraX,
+      enemyProjectile.x - cameraX,
       enemyProjectile.y,
       8,
       0,
@@ -1761,11 +1276,7 @@ function draw() {
     ctx.fill();
   }
 
-
   drawExplosion();
-
-
-  /* banderas del mapa */
 
   drawFlag(
     100,
@@ -1774,9 +1285,7 @@ function draw() {
 
   drawFlag(
     worldWidth - 100,
-    groundY(
-      worldWidth - 100
-    )
+    groundY(worldWidth - 100)
   );
 }
 
@@ -1785,10 +1294,10 @@ function draw() {
    NUBES
 ========================= */
 
-function drawCloud(
-  x,
-  y
-) {
+function drawCloud(x, y) {
+
+  ctx.fillStyle =
+    "rgba(255,255,255,0.75)";
 
   ctx.beginPath();
 
@@ -1800,4 +1309,181 @@ function drawCloud(
     Math.PI * 2
   );
 
-  c
+  ctx.arc(
+    x + 30,
+    y - 10,
+    32,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.arc(
+    x + 65,
+    y,
+    25,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+}
+
+
+/* =========================
+   BANDERA
+========================= */
+
+function drawFlag(x, ground) {
+
+  const screenX =
+    x - cameraX;
+
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 5;
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    screenX,
+    ground
+  );
+
+  ctx.lineTo(
+    screenX,
+    ground - 90
+  );
+
+  ctx.stroke();
+
+  ctx.fillStyle = "#e33";
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    screenX,
+    ground - 90
+  );
+
+  ctx.lineTo(
+    screenX + 45,
+    ground - 75
+  );
+
+  ctx.lineTo(
+    screenX,
+    ground - 60
+  );
+
+  ctx.closePath();
+
+  ctx.fill();
+}
+
+
+/* =========================
+   MOVIMIENTO
+========================= */
+
+function moveLeft() {
+
+  if (
+    gameOver ||
+    turn !== "player"
+  ) return;
+
+  player.vx = -4;
+}
+
+
+function moveRight() {
+
+  if (
+    gameOver ||
+    turn !== "player"
+  ) return;
+
+  player.vx = 4;
+}
+
+
+/* =========================
+   APUNTAR
+========================= */
+
+function updateAim(
+  clientX,
+  clientY
+) {
+
+  const dx =
+    clientX -
+    (player.x - cameraX);
+
+  const dy =
+    clientY -
+    player.y;
+
+  aimAngle =
+    Math.atan2(
+      dy,
+      dx
+    );
+}
+
+
+/* =========================
+   CARGAR
+========================= */
+
+function startCharge(event) {
+
+  event.preventDefault();
+
+  if (
+    projectile ||
+    gameOver ||
+    turn !== "player"
+  ) return;
+
+  charging = true;
+  power = 0.1;
+
+  if (
+    event.touches &&
+    event.touches.length > 0
+  ) {
+
+    updateAim(
+      event.touches[0].clientX,
+      event.touches[0].clientY
+    );
+  }
+}
+
+
+/* =========================
+   APUNTAR
+========================= */
+
+function aimWhileTouching(event) {
+
+  if (!charging) return;
+
+  event.preventDefault();
+
+  if (
+    event.touches &&
+    event.touches.length > 0
+  ) {
+
+    updateAim(
+      event.touches[0].clientX,
+      event.touches[0].clientY
+    );
+  }
+}
+
+
+/* =========================
+   DISPARAR
+  
