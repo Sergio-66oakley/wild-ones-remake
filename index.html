@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Wild Ones Remake - Beta 0.4</title>
+<title>Wild Ones Remake - Beta 0.5</title>
 
 <style>
 * {
@@ -92,9 +92,23 @@ button {
   background: #ffb300;
 }
 
+#restart {
+  position: fixed;
+  top: 52%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  height: 55px;
+  border-radius: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  display: none;
+  z-index: 30;
+}
+
 #message {
   position: fixed;
-  top: 45%;
+  top: 42%;
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
@@ -132,6 +146,8 @@ button {
 
 <div id="message"></div>
 
+<button id="restart">REINICIAR</button>
+
 <script>
 
 const canvas = document.getElementById("game");
@@ -162,6 +178,7 @@ const enemy = {
 };
 
 let projectile = null;
+let explosion = null;
 
 let direction = 1;
 
@@ -169,6 +186,8 @@ let charging = false;
 let power = 0.1;
 
 let aimAngle = -0.65;
+
+let gameOver = false;
 
 function groundY(x) {
 
@@ -225,6 +244,7 @@ function drawAnimal(x, y, bodyColor, health) {
   ctx.fillRect(x - 30, y - 42, 60, 6);
 
   ctx.fillStyle = "#e33";
+
   ctx.fillRect(
     x - 30,
     y - 42,
@@ -235,18 +255,15 @@ function drawAnimal(x, y, bodyColor, health) {
 
 function drawAim() {
 
-  if (!charging || projectile) return;
+  if (!charging || projectile || gameOver) return;
 
   const length = 120 + power * 100;
 
-  const startX = player.x;
-  const startY = player.y;
-
   const endX =
-    startX + Math.cos(aimAngle) * length;
+    player.x + Math.cos(aimAngle) * length;
 
   const endY =
-    startY + Math.sin(aimAngle) * length;
+    player.y + Math.sin(aimAngle) * length;
 
   ctx.strokeStyle = "white";
   ctx.lineWidth = 3;
@@ -254,7 +271,7 @@ function drawAim() {
 
   ctx.beginPath();
 
-  ctx.moveTo(startX, startY);
+  ctx.moveTo(player.x, player.y);
   ctx.lineTo(endX, endY);
 
   ctx.stroke();
@@ -272,7 +289,7 @@ function drawAim() {
 
 function drawTrajectory() {
 
-  if (!charging || projectile) return;
+  if (!charging || projectile || gameOver) return;
 
   const speed = 5 + power * 12;
 
@@ -299,7 +316,104 @@ function drawTrajectory() {
   }
 }
 
+function drawExplosion() {
+
+  if (!explosion) return;
+
+  const progress =
+    explosion.time / explosion.duration;
+
+  const radius =
+    explosion.maxRadius * progress;
+
+  ctx.save();
+
+  ctx.globalAlpha = 1 - progress;
+
+  ctx.fillStyle = "#ffcc00";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    explosion.x,
+    explosion.y,
+    radius,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  ctx.strokeStyle = "#ff6600";
+  ctx.lineWidth = 8;
+
+  ctx.beginPath();
+
+  ctx.arc(
+    explosion.x,
+    explosion.y,
+    radius,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function createExplosion(x, y) {
+
+  explosion = {
+    x: x,
+    y: y,
+    time: 0,
+    duration: 30,
+    maxRadius: 75
+  };
+
+  const distance = Math.hypot(
+    x - enemy.x,
+    y - enemy.y
+  );
+
+  if (distance < 100) {
+
+    const damage =
+      Math.round(
+        60 * (1 - distance / 100)
+      );
+
+    enemy.health -= damage;
+
+    if (enemy.health < 0) {
+      enemy.health = 0;
+    }
+
+    if (enemy.health <= 0) {
+
+      gameOver = true;
+
+      showMessage("¡VICTORIA!");
+      document.getElementById("restart").style.display = "block";
+    }
+  }
+}
+
+function updateExplosion() {
+
+  if (!explosion) return;
+
+  explosion.time++;
+
+  if (explosion.time >= explosion.duration) {
+    explosion = null;
+  }
+}
+
 function update() {
+
+  if (gameOver) return;
 
   player.vy += 0.5;
 
@@ -348,26 +462,32 @@ function update() {
     projectile.x += projectile.vx;
     projectile.y += projectile.vy;
 
-    const distance = Math.hypot(
+    const distanceToEnemy = Math.hypot(
       projectile.x - enemy.x,
       projectile.y - enemy.y
     );
 
-    if (distance < 40) {
+    if (distanceToEnemy < 35) {
 
-      const damage =
-        Math.round(20 + power * 40);
-
-      enemy.health -= damage;
+      createExplosion(
+        projectile.x,
+        projectile.y
+      );
 
       projectile = null;
+    }
 
-      if (enemy.health <= 0) {
+    if (
+      projectile &&
+      projectile.y >= groundY(projectile.x) - 5
+    ) {
 
-        enemy.health = 0;
+      createExplosion(
+        projectile.x,
+        groundY(projectile.x)
+      );
 
-        showMessage("¡VICTORIA!");
-      }
+      projectile = null;
     }
 
     if (
@@ -382,6 +502,8 @@ function update() {
       projectile = null;
     }
   }
+
+  updateExplosion();
 
   player.vx *= 0.85;
 }
@@ -465,19 +587,23 @@ function draw() {
 
     ctx.fill();
   }
+
+  drawExplosion();
 }
 
 function moveLeft() {
 
-  player.vx = -3;
+  if (gameOver) return;
 
+  player.vx = -3;
   direction = -1;
 }
 
 function moveRight() {
 
-  player.vx = 3;
+  if (gameOver) return;
 
+  player.vx = 3;
   direction = 1;
 }
 
@@ -493,7 +619,8 @@ function updateAim(clientX, clientY) {
     Math.atan2(dy, dx);
 
   if (direction === -1 && aimAngle > 0) {
-    aimAngle = -Math.PI + Math.abs(aimAngle);
+    aimAngle =
+      -Math.PI + Math.abs(aimAngle);
   }
 }
 
@@ -501,7 +628,7 @@ function startCharge(event) {
 
   event.preventDefault();
 
-  if (projectile) return;
+  if (projectile || gameOver) return;
 
   charging = true;
   power = 0.1;
@@ -534,7 +661,7 @@ function releaseFire(event) {
 
   event.preventDefault();
 
-  if (!charging || projectile) return;
+  if (!charging || projectile || gameOver) return;
 
   charging = false;
 
@@ -543,10 +670,12 @@ function releaseFire(event) {
 
   projectile = {
 
-    x: player.x +
+    x:
+      player.x +
       Math.cos(aimAngle) * 25,
 
-    y: player.y +
+    y:
+      player.y +
       Math.sin(aimAngle) * 25,
 
     vx:
@@ -559,6 +688,51 @@ function releaseFire(event) {
   document.getElementById(
     "powerFill"
   ).style.width = "10%";
+}
+
+function showMessage(text) {
+
+  const message =
+    document.getElementById("message");
+
+  message.textContent = text;
+
+  message.style.display = "block";
+}
+
+function restartGame() {
+
+  enemy.health = 100;
+
+  player.health = 100;
+
+  player.x = 120;
+
+  player.vx = 0;
+
+  player.vy = 0;
+
+  projectile = null;
+
+  explosion = null;
+
+  charging = false;
+
+  power = 0.1;
+
+  gameOver = false;
+
+  document.getElementById(
+    "powerFill"
+  ).style.width = "10%";
+
+  document.getElementById(
+    "message"
+  ).style.display = "none";
+
+  document.getElementById(
+    "restart"
+  ).style.display = "none";
 }
 
 document
@@ -617,6 +791,7 @@ fireButton.addEventListener(
   function(event) {
 
     if (charging) {
+
       updateAim(
         event.clientX,
         event.clientY
@@ -630,15 +805,12 @@ fireButton.addEventListener(
   releaseFire
 );
 
-function showMessage(text) {
-
-  const message =
-    document.getElementById("message");
-
-  message.textContent = text;
-
-  message.style.display = "block";
-}
+document
+  .getElementById("restart")
+  .addEventListener(
+    "click",
+    restartGame
+  );
 
 function gameLoop() {
 
@@ -654,4 +826,4 @@ gameLoop();
 </script>
 
 </body>
-</html>
+  </html>
