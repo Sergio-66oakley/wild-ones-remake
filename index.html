@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Wild Ones Remake - Beta 0.7</title>
+<title>Wild Ones Remake - Beta 0.8</title>
 
 <style>
 * {
@@ -65,7 +65,7 @@ body {
 
 #power {
   position: fixed;
-  bottom: 110px;
+  bottom: 115px;
   left: 50%;
   transform: translateX(-50%);
   width: 220px;
@@ -93,42 +93,49 @@ body {
 
 #controls {
   position: fixed;
-  bottom: 20px;
+  bottom: 18px;
   left: 0;
   right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 15px;
+  padding: 0 12px;
   z-index: 10;
 }
 
 button {
-  width: 70px;
-  height: 70px;
+  width: 65px;
+  height: 65px;
   border: 0;
   border-radius: 50%;
-  font-size: 28px;
+  font-size: 26px;
   background: rgba(255,255,255,0.9);
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 #fire {
   background: #ffb300;
-  width: 80px;
-  height: 80px;
+  width: 78px;
+  height: 78px;
+}
+
+#jump {
+  background: #58a6ff;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
 }
 
 #weaponButton {
   background: #4b7bec;
   color: white;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: bold;
 }
 
 #restart {
   position: fixed;
-  top: 54%;
+  top: 55%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 160px;
@@ -193,7 +200,10 @@ button {
 </div>
 
 <div id="controls">
+
   <button id="left">◀</button>
+
+  <button id="jump">SALTAR</button>
 
   <button id="weaponButton">
     CAMBIAR
@@ -202,6 +212,7 @@ button {
   <button id="fire">💥</button>
 
   <button id="right">▶</button>
+
 </div>
 
 <div id="message"></div>
@@ -217,6 +228,11 @@ const canvas =
 
 const ctx =
   canvas.getContext("2d");
+
+
+/* =========================
+   TAMAÑO
+========================= */
 
 function resize() {
 
@@ -236,12 +252,21 @@ window.addEventListener(
 
 
 /* =========================
-   PERSONAJES
+   MUNDO
+========================= */
+
+const worldWidth = 3000;
+
+let cameraX = 0;
+
+
+/* =========================
+   PERSONAJE
 ========================= */
 
 const player = {
 
-  x: 120,
+  x: 250,
 
   y: 0,
 
@@ -251,12 +276,15 @@ const player = {
 
   vx: 0,
 
-  vy: 0
+  vy: 0,
+
+  onGround: false
 };
+
 
 const enemy = {
 
-  x: 0,
+  x: 2500,
 
   y: 0,
 
@@ -311,8 +339,6 @@ let enemyProjectile = null;
 
 let explosion = null;
 
-let direction = 1;
-
 let charging = false;
 
 let power = 0.1;
@@ -343,6 +369,36 @@ function groundY(x) {
 
 
 /* =========================
+   CÁMARA
+========================= */
+
+function updateCamera() {
+
+  cameraX =
+    player.x -
+    canvas.width * 0.35;
+
+  if (cameraX < 0) {
+
+    cameraX = 0;
+  }
+
+  const maxCamera =
+    worldWidth -
+    canvas.width;
+
+  if (
+    cameraX >
+    maxCamera
+  ) {
+
+    cameraX =
+      maxCamera;
+  }
+}
+
+
+/* =========================
    TERRENO
 ========================= */
 
@@ -356,14 +412,18 @@ function drawGround() {
   );
 
   for (
-    let x = 0;
-    x <= canvas.width;
-    x += 5
+    let screenX = 0;
+    screenX <= canvas.width;
+    screenX += 5
   ) {
 
+    const worldX =
+      screenX +
+      cameraX;
+
     ctx.lineTo(
-      x,
-      groundY(x)
+      screenX,
+      groundY(worldX)
     );
   }
 
@@ -378,6 +438,47 @@ function drawGround() {
     "#579443";
 
   ctx.fill();
+
+
+  /* líneas del terreno */
+
+  ctx.strokeStyle =
+    "#396d2c";
+
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+
+  for (
+    let screenX = 0;
+    screenX <= canvas.width;
+    screenX += 5
+  ) {
+
+    const worldX =
+      screenX +
+      cameraX;
+
+    const y =
+      groundY(worldX);
+
+    if (screenX === 0) {
+
+      ctx.moveTo(
+        screenX,
+        y
+      );
+
+    } else {
+
+      ctx.lineTo(
+        screenX,
+        y
+      );
+    }
+  }
+
+  ctx.stroke();
 }
 
 
@@ -386,13 +487,16 @@ function drawGround() {
 ========================= */
 
 function drawAnimal(
-  x,
+  worldX,
   y,
   bodyColor,
   health
 ) {
 
-  /* cuerpo */
+  const x =
+    worldX -
+    cameraX;
+
 
   ctx.fillStyle =
     bodyColor;
@@ -403,6 +507,29 @@ function drawAnimal(
     x,
     y,
     25,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+
+  /* orejas */
+
+  ctx.beginPath();
+
+  ctx.arc(
+    x - 17,
+    y - 18,
+    9,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.arc(
+    x + 17,
+    y - 18,
+    9,
     0,
     Math.PI * 2
   );
@@ -503,18 +630,32 @@ function drawAim() {
     turn !== "player"
   ) return;
 
+
+  const weapon =
+    weapons[weaponIndex];
+
+
   const length =
-    120 + power * 100;
+    120 +
+    power * 100;
+
+
+  const playerScreenX =
+    player.x -
+    cameraX;
+
 
   const endX =
-    player.x +
+    playerScreenX +
     Math.cos(aimAngle) *
     length;
+
 
   const endY =
     player.y +
     Math.sin(aimAngle) *
     length;
+
 
   ctx.strokeStyle =
     "white";
@@ -529,7 +670,7 @@ function drawAim() {
   ctx.beginPath();
 
   ctx.moveTo(
-    player.x,
+    playerScreenX,
     player.y
   );
 
@@ -573,18 +714,22 @@ function drawTrajectory() {
     turn !== "player"
   ) return;
 
+
   const weapon =
     weapons[weaponIndex];
+
 
   const speed =
     (5 + power * 12) *
     weapon.speed;
+
 
   let px =
     player.x;
 
   let py =
     player.y;
+
 
   let vx =
     Math.cos(aimAngle) *
@@ -594,12 +739,14 @@ function drawTrajectory() {
     Math.sin(aimAngle) *
     speed;
 
+
   ctx.fillStyle =
     "rgba(255,255,255,0.7)";
 
+
   for (
     let i = 0;
-    i < 25;
+    i < 30;
     i++
   ) {
 
@@ -609,10 +756,16 @@ function drawTrajectory() {
 
     vy += 0.35;
 
+
+    const screenX =
+      px -
+      cameraX;
+
+
     ctx.beginPath();
 
     ctx.arc(
-      px,
+      screenX,
       py,
       3,
       0,
@@ -632,26 +785,37 @@ function drawExplosion() {
 
   if (!explosion) return;
 
+
   const progress =
     explosion.time /
     explosion.duration;
+
 
   const radius =
     explosion.maxRadius *
     progress;
 
+
+  const screenX =
+    explosion.x -
+    cameraX;
+
+
   ctx.save();
 
   ctx.globalAlpha =
-    1 - progress;
+    1 -
+    progress;
+
 
   ctx.fillStyle =
     explosion.color;
 
+
   ctx.beginPath();
 
   ctx.arc(
-    explosion.x,
+    screenX,
     explosion.y,
     radius,
     0,
@@ -666,10 +830,11 @@ function drawExplosion() {
 
   ctx.lineWidth = 8;
 
+
   ctx.beginPath();
 
   ctx.arc(
-    explosion.x,
+    screenX,
     explosion.y,
     radius,
     0,
@@ -677,6 +842,7 @@ function drawExplosion() {
   );
 
   ctx.stroke();
+
 
   ctx.restore();
 }
@@ -721,6 +887,7 @@ function createExplosion(
         y - enemy.y
       );
 
+
     if (
       distance <
       weapon.radius
@@ -731,14 +898,17 @@ function createExplosion(
         distance /
         weapon.radius;
 
+
       const damage =
         Math.round(
           weapon.damage *
           multiplier
         );
 
+
       enemy.health -=
         damage;
+
 
       if (
         enemy.health < 0
@@ -747,9 +917,11 @@ function createExplosion(
         enemy.health = 0;
       }
 
+
       showDamage(
         damage
       );
+
 
       if (
         enemy.health <= 0
@@ -782,6 +954,7 @@ function createExplosion(
         y - player.y
       );
 
+
     if (
       distance <
       weapon.radius
@@ -792,14 +965,17 @@ function createExplosion(
         distance /
         weapon.radius;
 
+
       const damage =
         Math.round(
           weapon.damage *
           multiplier
         );
 
+
       player.health -=
         damage;
+
 
       if (
         player.health < 0
@@ -808,6 +984,7 @@ function createExplosion(
         player.health = 0;
       }
 
+
       document
         .getElementById(
           "health"
@@ -815,9 +992,11 @@ function createExplosion(
         .textContent =
         player.health;
 
+
       showDamage(
         damage
       );
+
 
       if (
         player.health <= 0
@@ -842,7 +1021,7 @@ function createExplosion(
 
 
 /* =========================
-   DAÑO VISUAL
+   DAÑO
 ========================= */
 
 function showDamage(
@@ -854,11 +1033,14 @@ function showDamage(
       "damageText"
     );
 
+
   text.textContent =
     "-" + damage;
 
+
   text.style.display =
     "block";
+
 
   setTimeout(
     function() {
@@ -878,9 +1060,12 @@ function showDamage(
 
 function updateExplosion() {
 
-  if (!explosion) return;
+  if (!explosion)
+    return;
+
 
   explosion.time++;
+
 
   if (
     explosion.time >=
@@ -893,18 +1078,22 @@ function updateExplosion() {
 
 
 /* =========================
-   PROYECTIL DEL JUGADOR
+   PROYECTIL JUGADOR
 ========================= */
 
 function updatePlayerProjectile() {
 
-  if (!projectile) return;
+  if (!projectile)
+    return;
+
 
   projectile.vy +=
     0.35;
 
+
   projectile.x +=
     projectile.vx;
+
 
   projectile.y +=
     projectile.vy;
@@ -930,7 +1119,9 @@ function updatePlayerProjectile() {
       projectile.weapon
     );
 
+
     projectile = null;
+
 
     if (!gameOver) {
 
@@ -958,7 +1149,9 @@ function updatePlayerProjectile() {
       projectile.weapon
     );
 
+
     projectile = null;
+
 
     if (!gameOver) {
 
@@ -976,14 +1169,15 @@ function updatePlayerProjectile() {
       -50 ||
 
       projectile.x >
-      canvas.width + 50 ||
+      worldWidth + 50 ||
 
       projectile.y >
-      canvas.height + 100
+      canvas.height + 150
     )
   ) {
 
     projectile = null;
+
 
     if (!gameOver) {
 
@@ -999,11 +1193,17 @@ function updatePlayerProjectile() {
 
 function startEnemyTurn() {
 
-  if (gameOver) return;
+  if (gameOver)
+    return;
 
-  turn = "enemy";
 
-  charging = false;
+  turn =
+    "enemy";
+
+
+  charging =
+    false;
+
 
   document
     .getElementById(
@@ -1012,8 +1212,10 @@ function startEnemyTurn() {
     .textContent =
     "TURNO DEL ENEMIGO";
 
+
   enemyThinking =
     true;
+
 
   enemyTimer =
     90;
@@ -1026,18 +1228,23 @@ function startEnemyTurn() {
 
 function enemyAttack() {
 
-  if (gameOver) return;
+  if (gameOver)
+    return;
+
 
   enemyThinking =
     false;
+
 
   const dx =
     player.x -
     enemy.x;
 
+
   const dy =
     player.y -
     enemy.y;
+
 
   const angle =
     Math.atan2(
@@ -1045,10 +1252,13 @@ function enemyAttack() {
       dx
     );
 
+
   const speed = 8;
+
 
   const enemyWeapon =
     weapons[1];
+
 
   enemyProjectile = {
 
@@ -1085,11 +1295,14 @@ function updateEnemyProjectile() {
   if (!enemyProjectile)
     return;
 
+
   enemyProjectile.vy +=
     0.35;
 
+
   enemyProjectile.x +=
     enemyProjectile.vx;
+
 
   enemyProjectile.y +=
     enemyProjectile.vy;
@@ -1115,7 +1328,9 @@ function updateEnemyProjectile() {
       enemyProjectile.weapon
     );
 
+
     enemyProjectile = null;
+
 
     if (!gameOver) {
 
@@ -1143,7 +1358,9 @@ function updateEnemyProjectile() {
       enemyProjectile.weapon
     );
 
+
     enemyProjectile = null;
+
 
     if (!gameOver) {
 
@@ -1161,14 +1378,15 @@ function updateEnemyProjectile() {
       -50 ||
 
       enemyProjectile.x >
-      canvas.width + 50 ||
+      worldWidth + 50 ||
 
       enemyProjectile.y >
-      canvas.height + 100
+      canvas.height + 150
     )
   ) {
 
     enemyProjectile = null;
+
 
     if (!gameOver) {
 
@@ -1184,10 +1402,13 @@ function updateEnemyProjectile() {
 
 function startPlayerTurn() {
 
-  if (gameOver) return;
+  if (gameOver)
+    return;
+
 
   turn =
     "player";
+
 
   document
     .getElementById(
@@ -1196,8 +1417,10 @@ function startPlayerTurn() {
     .textContent =
     "TU TURNO";
 
+
   power =
     0.1;
+
 
   document
     .getElementById(
@@ -1209,23 +1432,55 @@ function startPlayerTurn() {
 
 
 /* =========================
-   ACTUALIZACIÓN
+   SALTO
+========================= */
+
+function jump() {
+
+  if (
+    gameOver ||
+    turn !== "player"
+  ) return;
+
+
+  if (
+    player.onGround
+  ) {
+
+    player.vy =
+      -11;
+
+    player.onGround =
+      false;
+  }
+}
+
+
+/* =========================
+   UPDATE
 ========================= */
 
 function update() {
 
-  if (gameOver) return;
+  if (gameOver)
+    return;
 
+
+  /* gravedad */
 
   player.vy +=
     0.5;
 
+
   player.x +=
     player.vx;
+
 
   player.y +=
     player.vy;
 
+
+  /* límites */
 
   if (
     player.x < 30
@@ -1237,13 +1492,15 @@ function update() {
 
   if (
     player.x >
-    canvas.width - 30
+    worldWidth - 30
   ) {
 
     player.x =
-      canvas.width - 30;
+      worldWidth - 30;
   }
 
+
+  /* suelo */
 
   const ground =
     groundY(
@@ -1262,11 +1519,18 @@ function update() {
       player.radius;
 
     player.vy = 0;
+
+    player.onGround =
+      true;
+
+  } else {
+
+    player.onGround =
+      false;
   }
 
 
-  enemy.x =
-    canvas.width - 120;
+  /* enemigo */
 
   enemy.y =
     groundY(
@@ -1274,6 +1538,8 @@ function update() {
     ) -
     enemy.radius;
 
+
+  /* potencia */
 
   if (
     charging &&
@@ -1284,10 +1550,12 @@ function update() {
     power +=
       0.012;
 
+
     if (power > 1) {
 
       power = 1;
     }
+
 
     document
       .getElementById(
@@ -1312,6 +1580,7 @@ function update() {
 
     enemyTimer--;
 
+
     if (
       enemyTimer <= 0
     ) {
@@ -1323,11 +1592,14 @@ function update() {
 
   player.vx *=
     0.85;
+
+
+  updateCamera();
 }
 
 
 /* =========================
-   DIBUJO
+   DIBUJAR
 ========================= */
 
 function draw() {
@@ -1340,6 +1612,8 @@ function draw() {
   );
 
 
+  /* cielo */
+
   const gradient =
     ctx.createLinearGradient(
       0,
@@ -1348,18 +1622,22 @@ function draw() {
       canvas.height
     );
 
+
   gradient.addColorStop(
     0,
     "#65b8e8"
   );
+
 
   gradient.addColorStop(
     1,
     "#d8f2ff"
   );
 
+
   ctx.fillStyle =
     gradient;
+
 
   ctx.fillRect(
     0,
@@ -1374,6 +1652,7 @@ function draw() {
   ctx.fillStyle =
     "#ffd95a";
 
+
   ctx.beginPath();
 
   ctx.arc(
@@ -1387,8 +1666,32 @@ function draw() {
   ctx.fill();
 
 
+  /* nubes */
+
+  ctx.fillStyle =
+    "rgba(255,255,255,0.75)";
+
+
+  drawCloud(
+    200 - cameraX * 0.2,
+    120
+  );
+
+  drawCloud(
+    650 - cameraX * 0.2,
+    170
+  );
+
+  drawCloud(
+    1200 - cameraX * 0.2,
+    100
+  );
+
+
   drawGround();
 
+
+  /* jugador */
 
   drawAnimal(
     player.x,
@@ -1397,6 +1700,8 @@ function draw() {
     player.health
   );
 
+
+  /* enemigo */
 
   drawAnimal(
     enemy.x,
@@ -1418,10 +1723,12 @@ function draw() {
     ctx.fillStyle =
       projectile.weapon.color;
 
+
     ctx.beginPath();
 
     ctx.arc(
-      projectile.x,
+      projectile.x -
+      cameraX,
       projectile.y,
       8,
       0,
@@ -1439,10 +1746,12 @@ function draw() {
     ctx.fillStyle =
       enemyProjectile.weapon.color;
 
+
     ctx.beginPath();
 
     ctx.arc(
-      enemyProjectile.x,
+      enemyProjectile.x -
+      cameraX,
       enemyProjectile.y,
       8,
       0,
@@ -1454,511 +1763,41 @@ function draw() {
 
 
   drawExplosion();
+
+
+  /* banderas del mapa */
+
+  drawFlag(
+    100,
+    groundY(100)
+  );
+
+  drawFlag(
+    worldWidth - 100,
+    groundY(
+      worldWidth - 100
+    )
+  );
 }
 
 
 /* =========================
-   MOVIMIENTO
+   NUBES
 ========================= */
 
-function moveLeft() {
-
-  if (
-    gameOver ||
-    turn !== "player"
-  ) return;
-
-  player.vx =
-    -3;
-
-  direction =
-    -1;
-}
-
-
-function moveRight() {
-
-  if (
-    gameOver ||
-    turn !== "player"
-  ) return;
-
-  player.vx =
-    3;
-
-  direction =
-    1;
-}
-
-
-/* =========================
-   APUNTAR
-========================= */
-
-function updateAim(
-  clientX,
-  clientY
+function drawCloud(
+  x,
+  y
 ) {
 
-  const dx =
-    clientX -
-    player.x;
-
-  const dy =
-    clientY -
-    player.y;
-
-  aimAngle =
-    Math.atan2(
-      dy,
-      dx
-    );
-
-
-  if (
-    direction === -1 &&
-    aimAngle > 0
-  ) {
-
-    aimAngle =
-      -Math.PI +
-      Math.abs(
-        aimAngle
-      );
-  }
-}
-
-
-/* =========================
-   CARGAR DISPARO
-========================= */
-
-function startCharge(
-  event
-) {
-
-  event.preventDefault();
-
-  if (
-    projectile ||
-    gameOver ||
-    turn !== "player"
-  ) return;
-
-  charging =
-    true;
-
-  power =
-    0.1;
-
-
-  if (
-    event.touches &&
-    event.touches.length > 0
-  ) {
-
-    updateAim(
-      event.touches[0].clientX,
-      event.touches[0].clientY
-    );
-  }
-}
-
-
-/* =========================
-   APUNTAR MIENTRAS CARGA
-========================= */
-
-function aimWhileTouching(
-  event
-) {
-
-  if (!charging)
-    return;
-
-  event.preventDefault();
-
-
-  if (
-    event.touches &&
-    event.touches.length > 0
-  ) {
-
-    updateAim(
-      event.touches[0].clientX,
-      event.touches[0].clientY
-    );
-  }
-}
-
-
-/* =========================
-   DISPARAR
-========================= */
-
-function releaseFire(
-  event
-) {
-
-  event.preventDefault();
-
-  if (
-    !charging ||
-    projectile ||
-    gameOver ||
-    turn !== "player"
-  ) return;
-
-
-  charging =
-    false;
-
-
-  const weapon =
-    weapons[weaponIndex];
-
-
-  const speed =
-    (5 + power * 12) *
-    weapon.speed;
-
-
-  projectile = {
-
-    x:
-      player.x +
-      Math.cos(
-        aimAngle
-      ) * 25,
-
-    y:
-      player.y +
-      Math.sin(
-        aimAngle
-      ) * 25,
-
-    vx:
-      Math.cos(
-        aimAngle
-      ) * speed,
-
-    vy:
-      Math.sin(
-        aimAngle
-      ) * speed,
-
-    weapon:
-      weapon
-  };
-
-
-  document
-    .getElementById(
-      "powerFill"
-    )
-    .style.width =
-    "10%";
-}
-
-
-/* =========================
-   CAMBIAR ARMA
-========================= */
-
-function changeWeapon() {
-
-  if (
-    gameOver ||
-    turn !== "player" ||
-    projectile
-  ) return;
-
-
-  weaponIndex++;
-
-  if (
-    weaponIndex >=
-    weapons.length
-  ) {
-
-    weaponIndex = 0;
-  }
-
-
-  const weapon =
-    weapons[weaponIndex];
-
-
-  document
-    .getElementById(
-      "weaponName"
-    )
-    .textContent =
-    weapon.name;
-
-
-  document
-    .getElementById(
-      "weaponDamage"
-    )
-    .textContent =
-    weapon.damage;
-}
-
-
-/* =========================
-   MENSAJES
-========================= */
-
-function showMessage(
-  text
-) {
-
-  const message =
-    document.getElementById(
-      "message"
-    );
-
-  message.textContent =
-    text;
-
-  message.style.display =
-    "block";
-}
-
-
-/* =========================
-   REINICIAR
-========================= */
-
-function restartGame() {
-
-  enemy.health =
-    100;
-
-  player.health =
-    100;
-
-  player.x =
-    120;
-
-  player.vx =
-    0;
-
-  player.vy =
-    0;
-
-  projectile =
-    null;
-
-  enemyProjectile =
-    null;
-
-  explosion =
-    null;
-
-  charging =
-    false;
-
-  power =
-    0.1;
-
-  gameOver =
-    false;
-
-  turn =
-    "player";
-
-  enemyThinking =
-    false;
-
-  enemyTimer =
-    0;
-
-  weaponIndex =
-    0;
-
-
-  document
-    .getElementById(
-      "health"
-    )
-    .textContent =
-    "100";
-
-
-  document
-    .getElementById(
-      "turn"
-    )
-    .textContent =
-    "TU TURNO";
-
-
-  document
-    .getElementById(
-      "weaponName"
-    )
-    .textContent =
-    "BÁSICA";
-
-
-  document
-    .getElementById(
-      "weaponDamage"
-    )
-    .textContent =
-    "60";
-
-
-  document
-    .getElementById(
-      "powerFill"
-    )
-    .style.width =
-    "10%";
-
-
-  document
-    .getElementById(
-      "message"
-    )
-    .style.display =
-    "none";
-
-
-  document
-    .getElementById(
-      "restart"
-    )
-    .style.display =
-    "none";
-}
-
-
-/* =========================
-   CONTROLES
-========================= */
-
-const leftButton =
-  document.getElementById(
-    "left"
+  ctx.beginPath();
+
+  ctx.arc(
+    x,
+    y,
+    25,
+    0,
+    Math.PI * 2
   );
 
-const rightButton =
-  document.getElementById(
-    "right"
-  );
-
-const fireButton =
-  document.getElementById(
-    "fire"
-  );
-
-const weaponButton =
-  document.getElementById(
-    "weaponButton"
-  );
-
-
-leftButton.addEventListener(
-  "touchstart",
-  moveLeft
-);
-
-rightButton.addEventListener(
-  "touchstart",
-  moveRight
-);
-
-leftButton.addEventListener(
-  "mousedown",
-  moveLeft
-);
-
-rightButton.addEventListener(
-  "mousedown",
-  moveRight
-);
-
-
-fireButton.addEventListener(
-  "touchstart",
-  startCharge
-);
-
-fireButton.addEventListener(
-  "touchmove",
-  aimWhileTouching
-);
-
-fireButton.addEventListener(
-  "touchend",
-  releaseFire
-);
-
-
-fireButton.addEventListener(
-  "mousedown",
-  startCharge
-);
-
-
-fireButton.addEventListener(
-  "mousemove",
-  function(event) {
-
-    if (charging) {
-
-      updateAim(
-        event.clientX,
-        event.clientY
-      );
-    }
-  }
-);
-
-
-fireButton.addEventListener(
-  "mouseup",
-  releaseFire
-);
-
-
-weaponButton.addEventListener(
-  "click",
-  changeWeapon
-);
-
-
-document
-  .getElementById(
-    "restart"
-  )
-  .addEventListener(
-    "click",
-    restartGame
-  );
-
-
-/* =========================
-   GAME LOOP
-========================= */
-
-function gameLoop() {
-
-  update();
-
-  draw();
-
-  requestAnimationFrame(
-    gameLoop
-  );
-}
-
-gameLoop();
-
-</script>
-
-</body>
-</html>
+  c
