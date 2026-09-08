@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Wild Ones Remake - Beta 0.3</title>
+<title>Wild Ones Remake - Beta 0.4</title>
 
 <style>
 * {
@@ -162,12 +162,16 @@ const enemy = {
 };
 
 let projectile = null;
+
 let direction = 1;
 
 let charging = false;
 let power = 0.1;
 
+let aimAngle = -0.65;
+
 function groundY(x) {
+
   return canvas.height * 0.72 +
     Math.sin(x * 0.015) * 25 +
     Math.sin(x * 0.006) * 35;
@@ -199,52 +203,98 @@ function drawAnimal(x, y, bodyColor, health) {
   ctx.arc(x, y, 25, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ojos
   ctx.fillStyle = "white";
 
   ctx.beginPath();
+
   ctx.arc(x - 8, y - 6, 5, 0, Math.PI * 2);
   ctx.arc(x + 8, y - 6, 5, 0, Math.PI * 2);
+
   ctx.fill();
 
   ctx.fillStyle = "#111";
 
   ctx.beginPath();
+
   ctx.arc(x - 8, y - 6, 2, 0, Math.PI * 2);
   ctx.arc(x + 8, y - 6, 2, 0, Math.PI * 2);
+
   ctx.fill();
 
-  // Barra de vida
   ctx.fillStyle = "#222";
   ctx.fillRect(x - 30, y - 42, 60, 6);
 
   ctx.fillStyle = "#e33";
-  ctx.fillRect(x - 30, y - 42, 60 * Math.max(0, health) / 100, 6);
+  ctx.fillRect(
+    x - 30,
+    y - 42,
+    60 * Math.max(0, health) / 100,
+    6
+  );
+}
+
+function drawAim() {
+
+  if (!charging || projectile) return;
+
+  const length = 120 + power * 100;
+
+  const startX = player.x;
+  const startY = player.y;
+
+  const endX =
+    startX + Math.cos(aimAngle) * length;
+
+  const endY =
+    startY + Math.sin(aimAngle) * length;
+
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 8]);
+
+  ctx.beginPath();
+
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#ffcc00";
+
+  ctx.beginPath();
+
+  ctx.arc(endX, endY, 7, 0, Math.PI * 2);
+
+  ctx.fill();
 }
 
 function drawTrajectory() {
 
   if (!charging || projectile) return;
 
-  const angle = -0.65;
   const speed = 5 + power * 12;
 
-  let px = player.x + direction * 25;
-  let py = player.y - 10;
+  let px = player.x;
+  let py = player.y;
 
-  let vx = Math.cos(angle) * speed * direction;
-  let vy = Math.sin(angle) * speed;
+  let vx = Math.cos(aimAngle) * speed;
+  let vy = Math.sin(aimAngle) * speed;
 
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
 
   for (let i = 0; i < 25; i++) {
 
     px += vx;
     py += vy;
+
     vy += 0.35;
 
     ctx.beginPath();
+
     ctx.arc(px, py, 3, 0, Math.PI * 2);
+
     ctx.fill();
   }
 }
@@ -273,7 +323,9 @@ function update() {
   }
 
   enemy.x = canvas.width - 120;
-  enemy.y = groundY(enemy.x) - enemy.radius;
+
+  enemy.y =
+    groundY(enemy.x) - enemy.radius;
 
   if (charging && !projectile) {
 
@@ -283,7 +335,9 @@ function update() {
       power = 1;
     }
 
-    document.getElementById("powerFill").style.width =
+    document.getElementById(
+      "powerFill"
+    ).style.width =
       (power * 100) + "%";
   }
 
@@ -301,7 +355,8 @@ function update() {
 
     if (distance < 40) {
 
-      const damage = Math.round(20 + power * 40);
+      const damage =
+        Math.round(20 + power * 40);
 
       enemy.health -= damage;
 
@@ -340,7 +395,6 @@ function draw() {
     canvas.height
   );
 
-  // Cielo
   const gradient =
     ctx.createLinearGradient(
       0,
@@ -361,7 +415,6 @@ function draw() {
     canvas.height
   );
 
-  // Sol
   ctx.fillStyle = "#ffd95a";
 
   ctx.beginPath();
@@ -392,6 +445,8 @@ function draw() {
     enemy.health
   );
 
+  drawAim();
+
   drawTrajectory();
 
   if (projectile) {
@@ -415,13 +470,31 @@ function draw() {
 function moveLeft() {
 
   player.vx = -3;
+
   direction = -1;
 }
 
 function moveRight() {
 
   player.vx = 3;
+
   direction = 1;
+}
+
+function updateAim(clientX, clientY) {
+
+  const dx =
+    clientX - player.x;
+
+  const dy =
+    clientY - player.y;
+
+  aimAngle =
+    Math.atan2(dy, dx);
+
+  if (direction === -1 && aimAngle > 0) {
+    aimAngle = -Math.PI + Math.abs(aimAngle);
+  }
 }
 
 function startCharge(event) {
@@ -432,6 +505,29 @@ function startCharge(event) {
 
   charging = true;
   power = 0.1;
+
+  if (event.touches && event.touches.length > 0) {
+
+    updateAim(
+      event.touches[0].clientX,
+      event.touches[0].clientY
+    );
+  }
+}
+
+function aimWhileTouching(event) {
+
+  if (!charging) return;
+
+  event.preventDefault();
+
+  if (event.touches && event.touches.length > 0) {
+
+    updateAim(
+      event.touches[0].clientX,
+      event.touches[0].clientY
+    );
+  }
 }
 
 function releaseFire(event) {
@@ -442,49 +538,56 @@ function releaseFire(event) {
 
   charging = false;
 
-  const angle = -0.65;
-
-  const speed = 5 + power * 12;
+  const speed =
+    5 + power * 12;
 
   projectile = {
 
-    x: player.x + direction * 25,
+    x: player.x +
+      Math.cos(aimAngle) * 25,
 
-    y: player.y - 10,
+    y: player.y +
+      Math.sin(aimAngle) * 25,
 
-    vx: Math.cos(angle) * speed * direction,
+    vx:
+      Math.cos(aimAngle) * speed,
 
-    vy: Math.sin(angle) * speed
+    vy:
+      Math.sin(aimAngle) * speed
   };
 
-  document.getElementById("powerFill").style.width = "10%";
-}
-
-function showMessage(text) {
-
-  const message =
-    document.getElementById("message");
-
-  message.textContent = text;
-
-  message.style.display = "block";
+  document.getElementById(
+    "powerFill"
+  ).style.width = "10%";
 }
 
 document
   .getElementById("left")
-  .addEventListener("touchstart", moveLeft);
+  .addEventListener(
+    "touchstart",
+    moveLeft
+  );
 
 document
   .getElementById("right")
-  .addEventListener("touchstart", moveRight);
+  .addEventListener(
+    "touchstart",
+    moveRight
+  );
 
 document
   .getElementById("left")
-  .addEventListener("mousedown", moveLeft);
+  .addEventListener(
+    "mousedown",
+    moveLeft
+  );
 
 document
   .getElementById("right")
-  .addEventListener("mousedown", moveRight);
+  .addEventListener(
+    "mousedown",
+    moveRight
+  );
 
 const fireButton =
   document.getElementById("fire");
@@ -492,6 +595,11 @@ const fireButton =
 fireButton.addEventListener(
   "touchstart",
   startCharge
+);
+
+fireButton.addEventListener(
+  "touchmove",
+  aimWhileTouching
 );
 
 fireButton.addEventListener(
@@ -505,9 +613,32 @@ fireButton.addEventListener(
 );
 
 fireButton.addEventListener(
+  "mousemove",
+  function(event) {
+
+    if (charging) {
+      updateAim(
+        event.clientX,
+        event.clientY
+      );
+    }
+  }
+);
+
+fireButton.addEventListener(
   "mouseup",
   releaseFire
 );
+
+function showMessage(text) {
+
+  const message =
+    document.getElementById("message");
+
+  message.textContent = text;
+
+  message.style.display = "block";
+}
 
 function gameLoop() {
 
