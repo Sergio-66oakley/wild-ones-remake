@@ -1,89 +1,110 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <title>Wild Ones Remake</title>
+<title>Wild Ones Remake - Beta 0.3</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-      touch-action: none;
-    }
+<style>
+* {
+  box-sizing: border-box;
+  touch-action: none;
+}
 
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #111;
-      font-family: Arial, sans-serif;
-    }
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #111;
+  font-family: Arial, sans-serif;
+}
 
-    #game {
-      width: 100vw;
-      height: 100vh;
-      display: block;
-      background: #87ceeb;
-    }
+#game {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
 
-    #hud {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      display: flex;
-      justify-content: space-between;
-      color: white;
-      font-weight: bold;
-      font-size: 15px;
-      text-shadow: 2px 2px 3px #000;
-      z-index: 10;
-    }
+#hud {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  text-shadow: 2px 2px 3px black;
+  z-index: 10;
+}
 
-    #controls {
-      position: fixed;
-      bottom: 20px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: space-between;
-      padding: 0 20px;
-      z-index: 10;
-    }
+#power {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  text-align: center;
+  color: white;
+  font-weight: bold;
+  text-shadow: 2px 2px 3px black;
+  z-index: 10;
+}
 
-    button {
-      border: 0;
-      border-radius: 50%;
-      width: 75px;
-      height: 75px;
-      font-size: 30px;
-      background: rgba(255,255,255,0.85);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-    }
+#powerBar {
+  width: 100%;
+  height: 20px;
+  background: #222;
+  border: 2px solid white;
+  border-radius: 10px;
+  overflow: hidden;
+}
 
-    #power {
-      position: fixed;
-      bottom: 105px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 180px;
-      z-index: 10;
-    }
+#powerFill {
+  width: 10%;
+  height: 100%;
+  background: #ffcc00;
+}
 
-    #powerBar {
-      width: 100%;
-      height: 18px;
-      background: #333;
-      border-radius: 10px;
-      overflow: hidden;
-    }
+#controls {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 10;
+}
 
-    #powerFill {
-      width: 50%;
-      height: 100%;
-      background: #fff;
-    }
-  </style>
+button {
+  width: 75px;
+  height: 75px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 30px;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+#fire {
+  background: #ffb300;
+}
+
+#message {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 35px;
+  font-weight: bold;
+  text-shadow: 3px 3px 5px black;
+  display: none;
+  z-index: 20;
+}
+</style>
 </head>
 
 <body>
@@ -97,6 +118,7 @@
 </div>
 
 <div id="power">
+  POTENCIA
   <div id="powerBar">
     <div id="powerFill"></div>
   </div>
@@ -108,7 +130,10 @@
   <button id="right">▶</button>
 </div>
 
+<div id="message"></div>
+
 <script>
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -138,16 +163,20 @@ const enemy = {
 
 let projectile = null;
 let direction = 1;
-let power = 0.5;
+
+let charging = false;
+let power = 0.1;
 
 function groundY(x) {
   return canvas.height * 0.72 +
-         Math.sin(x * 0.015) * 25 +
-         Math.sin(x * 0.006) * 35;
+    Math.sin(x * 0.015) * 25 +
+    Math.sin(x * 0.006) * 35;
 }
 
 function drawGround() {
+
   ctx.beginPath();
+
   ctx.moveTo(0, canvas.height);
 
   for (let x = 0; x <= canvas.width; x += 5) {
@@ -155,20 +184,23 @@ function drawGround() {
   }
 
   ctx.lineTo(canvas.width, canvas.height);
+
   ctx.closePath();
 
-  ctx.fillStyle = "#5b9b45";
+  ctx.fillStyle = "#579443";
   ctx.fill();
 }
 
 function drawAnimal(x, y, bodyColor, health) {
+
   ctx.fillStyle = bodyColor;
 
   ctx.beginPath();
   ctx.arc(x, y, 25, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#fff";
+  // Ojos
+  ctx.fillStyle = "white";
 
   ctx.beginPath();
   ctx.arc(x - 8, y - 6, 5, 0, Math.PI * 2);
@@ -187,20 +219,55 @@ function drawAnimal(x, y, bodyColor, health) {
   ctx.fillRect(x - 30, y - 42, 60, 6);
 
   ctx.fillStyle = "#e33";
-  ctx.fillRect(x - 30, y - 42, 60 * (health / 100), 6);
+  ctx.fillRect(x - 30, y - 42, 60 * Math.max(0, health) / 100, 6);
+}
+
+function drawTrajectory() {
+
+  if (!charging || projectile) return;
+
+  const angle = -0.65;
+  const speed = 5 + power * 12;
+
+  let px = player.x + direction * 25;
+  let py = player.y - 10;
+
+  let vx = Math.cos(angle) * speed * direction;
+  let vy = Math.sin(angle) * speed;
+
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+
+  for (let i = 0; i < 25; i++) {
+
+    px += vx;
+    py += vy;
+    vy += 0.35;
+
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function update() {
+
   player.vy += 0.5;
+
   player.x += player.vx;
   player.y += player.vy;
 
-  if (player.x < 30) player.x = 30;
-  if (player.x > canvas.width - 30) player.x = canvas.width - 30;
+  if (player.x < 30) {
+    player.x = 30;
+  }
+
+  if (player.x > canvas.width - 30) {
+    player.x = canvas.width - 30;
+  }
 
   const ground = groundY(player.x);
 
   if (player.y + player.radius >= ground) {
+
     player.y = ground - player.radius;
     player.vy = 0;
   }
@@ -208,27 +275,55 @@ function update() {
   enemy.x = canvas.width - 120;
   enemy.y = groundY(enemy.x) - enemy.radius;
 
+  if (charging && !projectile) {
+
+    power += 0.012;
+
+    if (power > 1) {
+      power = 1;
+    }
+
+    document.getElementById("powerFill").style.width =
+      (power * 100) + "%";
+  }
+
   if (projectile) {
+
     projectile.vy += 0.35;
+
     projectile.x += projectile.vx;
     projectile.y += projectile.vy;
 
-    const enemyDistance = Math.hypot(
+    const distance = Math.hypot(
       projectile.x - enemy.x,
       projectile.y - enemy.y
     );
 
-    if (enemyDistance < 35) {
-      enemy.health -= 25;
+    if (distance < 40) {
+
+      const damage = Math.round(20 + power * 40);
+
+      enemy.health -= damage;
+
       projectile = null;
+
+      if (enemy.health <= 0) {
+
+        enemy.health = 0;
+
+        showMessage("¡VICTORIA!");
+      }
     }
 
     if (
       projectile &&
-      (projectile.x < 0 ||
-       projectile.x > canvas.width ||
-       projectile.y > canvas.height)
+      (
+        projectile.x < -50 ||
+        projectile.x > canvas.width + 50 ||
+        projectile.y > canvas.height + 100
+      )
     ) {
+
       projectile = null;
     }
   }
@@ -237,23 +332,48 @@ function update() {
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
 
   // Cielo
-  const gradient = ctx.createLinearGradient(
-    0, 0, 0, canvas.height
-  );
+  const gradient =
+    ctx.createLinearGradient(
+      0,
+      0,
+      0,
+      canvas.height
+    );
 
   gradient.addColorStop(0, "#65b8e8");
   gradient.addColorStop(1, "#d8f2ff");
 
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
 
   // Sol
   ctx.fillStyle = "#ffd95a";
+
   ctx.beginPath();
-  ctx.arc(canvas.width - 70, 70, 35, 0, Math.PI * 2);
+
+  ctx.arc(
+    canvas.width - 70,
+    70,
+    35,
+    0,
+    Math.PI * 2
+  );
+
   ctx.fill();
 
   drawGround();
@@ -272,9 +392,14 @@ function draw() {
     enemy.health
   );
 
+  drawTrajectory();
+
   if (projectile) {
+
     ctx.fillStyle = "#333";
+
     ctx.beginPath();
+
     ctx.arc(
       projectile.x,
       projectile.y,
@@ -282,48 +407,119 @@ function draw() {
       0,
       Math.PI * 2
     );
+
     ctx.fill();
   }
 }
 
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
 function moveLeft() {
+
   player.vx = -3;
   direction = -1;
 }
 
 function moveRight() {
+
   player.vx = 3;
   direction = 1;
 }
 
-function fire() {
+function startCharge(event) {
+
+  event.preventDefault();
+
   if (projectile) return;
+
+  charging = true;
+  power = 0.1;
+}
+
+function releaseFire(event) {
+
+  event.preventDefault();
+
+  if (!charging || projectile) return;
+
+  charging = false;
 
   const angle = -0.65;
 
+  const speed = 5 + power * 12;
+
   projectile = {
+
     x: player.x + direction * 25,
+
     y: player.y - 10,
-    vx: Math.cos(angle) * 8 * direction,
-    vy: Math.sin(angle) * 8
+
+    vx: Math.cos(angle) * speed * direction,
+
+    vy: Math.sin(angle) * speed
   };
+
+  document.getElementById("powerFill").style.width = "10%";
 }
 
-document.getElementById("left").addEventListener("touchstart", moveLeft);
-document.getElementById("right").addEventListener("touchstart", moveRight);
-document.getElementById("fire").addEventListener("touchstart", fire);
+function showMessage(text) {
 
-document.getElementById("left").addEventListener("mousedown", moveLeft);
-document.getElementById("right").addEventListener("mousedown", moveRight);
-document.getElementById("fire").addEventListener("mousedown", fire);
+  const message =
+    document.getElementById("message");
+
+  message.textContent = text;
+
+  message.style.display = "block";
+}
+
+document
+  .getElementById("left")
+  .addEventListener("touchstart", moveLeft);
+
+document
+  .getElementById("right")
+  .addEventListener("touchstart", moveRight);
+
+document
+  .getElementById("left")
+  .addEventListener("mousedown", moveLeft);
+
+document
+  .getElementById("right")
+  .addEventListener("mousedown", moveRight);
+
+const fireButton =
+  document.getElementById("fire");
+
+fireButton.addEventListener(
+  "touchstart",
+  startCharge
+);
+
+fireButton.addEventListener(
+  "touchend",
+  releaseFire
+);
+
+fireButton.addEventListener(
+  "mousedown",
+  startCharge
+);
+
+fireButton.addEventListener(
+  "mouseup",
+  releaseFire
+);
+
+function gameLoop() {
+
+  update();
+
+  draw();
+
+  requestAnimationFrame(gameLoop);
+}
 
 gameLoop();
+
 </script>
 
 </body>
