@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Wild Ones Remake - Beta 0.5</title>
+<title>Wild Ones Remake - Beta 0.6</title>
 
 <style>
 * {
@@ -36,6 +36,18 @@ body {
   font-weight: bold;
   font-size: 16px;
   text-shadow: 2px 2px 3px black;
+  z-index: 10;
+}
+
+#turn {
+  position: fixed;
+  top: 45px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px black;
   z-index: 10;
 }
 
@@ -94,10 +106,10 @@ button {
 
 #restart {
   position: fixed;
-  top: 52%;
+  top: 54%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 150px;
+  width: 160px;
   height: 55px;
   border-radius: 15px;
   font-size: 20px;
@@ -108,7 +120,7 @@ button {
 
 #message {
   position: fixed;
-  top: 42%;
+  top: 43%;
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
@@ -130,6 +142,8 @@ button {
   <div>🍪 999999</div>
   <div>❤️ <span id="health">100</span></div>
 </div>
+
+<div id="turn">TU TURNO</div>
 
 <div id="power">
   POTENCIA
@@ -180,6 +194,8 @@ const enemy = {
 let projectile = null;
 let explosion = null;
 
+let enemyProjectile = null;
+
 let direction = 1;
 
 let charging = false;
@@ -188,6 +204,12 @@ let power = 0.1;
 let aimAngle = -0.65;
 
 let gameOver = false;
+
+let turn = "player";
+
+let enemyThinking = false;
+
+let enemyTimer = 0;
 
 function groundY(x) {
 
@@ -255,7 +277,12 @@ function drawAnimal(x, y, bodyColor, health) {
 
 function drawAim() {
 
-  if (!charging || projectile || gameOver) return;
+  if (
+    !charging ||
+    projectile ||
+    gameOver ||
+    turn !== "player"
+  ) return;
 
   const length = 120 + power * 100;
 
@@ -289,7 +316,12 @@ function drawAim() {
 
 function drawTrajectory() {
 
-  if (!charging || projectile || gameOver) return;
+  if (
+    !charging ||
+    projectile ||
+    gameOver ||
+    turn !== "player"
+  ) return;
 
   const speed = 5 + power * 12;
 
@@ -362,7 +394,7 @@ function drawExplosion() {
   ctx.restore();
 }
 
-function createExplosion(x, y) {
+function createExplosion(x, y, attacker) {
 
   explosion = {
     x: x,
@@ -372,30 +404,73 @@ function createExplosion(x, y) {
     maxRadius: 75
   };
 
-  const distance = Math.hypot(
-    x - enemy.x,
-    y - enemy.y
-  );
+  if (attacker === "player") {
 
-  if (distance < 100) {
+    const distance = Math.hypot(
+      x - enemy.x,
+      y - enemy.y
+    );
 
-    const damage =
-      Math.round(
-        60 * (1 - distance / 100)
-      );
+    if (distance < 100) {
 
-    enemy.health -= damage;
+      const damage =
+        Math.round(
+          60 * (1 - distance / 100)
+        );
 
-    if (enemy.health < 0) {
-      enemy.health = 0;
+      enemy.health -= damage;
+
+      if (enemy.health < 0) {
+        enemy.health = 0;
+      }
+
+      if (enemy.health <= 0) {
+
+        gameOver = true;
+
+        showMessage("¡VICTORIA!");
+
+        document.getElementById(
+          "restart"
+        ).style.display = "block";
+      }
     }
+  }
 
-    if (enemy.health <= 0) {
+  if (attacker === "enemy") {
 
-      gameOver = true;
+    const distance = Math.hypot(
+      x - player.x,
+      y - player.y
+    );
 
-      showMessage("¡VICTORIA!");
-      document.getElementById("restart").style.display = "block";
+    if (distance < 100) {
+
+      const damage =
+        Math.round(
+          45 * (1 - distance / 100)
+        );
+
+      player.health -= damage;
+
+      if (player.health < 0) {
+        player.health = 0;
+      }
+
+      document.getElementById(
+        "health"
+      ).textContent = player.health;
+
+      if (player.health <= 0) {
+
+        gameOver = true;
+
+        showMessage("¡DERROTA!");
+
+        document.getElementById(
+          "restart"
+        ).style.display = "block";
+      }
     }
   }
 }
@@ -407,8 +482,214 @@ function updateExplosion() {
   explosion.time++;
 
   if (explosion.time >= explosion.duration) {
+
     explosion = null;
   }
+}
+
+function updatePlayerProjectile() {
+
+  if (!projectile) return;
+
+  projectile.vy += 0.35;
+
+  projectile.x += projectile.vx;
+  projectile.y += projectile.vy;
+
+  const distanceToEnemy = Math.hypot(
+    projectile.x - enemy.x,
+    projectile.y - enemy.y
+  );
+
+  if (distanceToEnemy < 35) {
+
+    createExplosion(
+      projectile.x,
+      projectile.y,
+      "player"
+    );
+
+    projectile = null;
+
+    if (!gameOver) {
+      startEnemyTurn();
+    }
+
+    return;
+  }
+
+  if (
+    projectile &&
+    projectile.y >= groundY(projectile.x) - 5
+  ) {
+
+    createExplosion(
+      projectile.x,
+      groundY(projectile.x),
+      "player"
+    );
+
+    projectile = null;
+
+    if (!gameOver) {
+      startEnemyTurn();
+    }
+
+    return;
+  }
+
+  if (
+    projectile &&
+    (
+      projectile.x < -50 ||
+      projectile.x > canvas.width + 50 ||
+      projectile.y > canvas.height + 100
+    )
+  ) {
+
+    projectile = null;
+
+    if (!gameOver) {
+      startEnemyTurn();
+    }
+  }
+}
+
+function startEnemyTurn() {
+
+  if (gameOver) return;
+
+  turn = "enemy";
+
+  charging = false;
+
+  document.getElementById(
+    "turn"
+  ).textContent = "TURNO DEL ENEMIGO";
+
+  enemyThinking = true;
+
+  enemyTimer = 90;
+}
+
+function enemyAttack() {
+
+  if (gameOver) return;
+
+  enemyThinking = false;
+
+  const dx =
+    player.x - enemy.x;
+
+  const dy =
+    player.y - enemy.y;
+
+  const angle =
+    Math.atan2(dy, dx);
+
+  const speed = 9;
+
+  enemyProjectile = {
+
+    x:
+      enemy.x +
+      Math.cos(angle) * 25,
+
+    y:
+      enemy.y +
+      Math.sin(angle) * 25,
+
+    vx:
+      Math.cos(angle) * speed,
+
+    vy:
+      Math.sin(angle) * speed
+  };
+}
+
+function updateEnemyProjectile() {
+
+  if (!enemyProjectile) return;
+
+  enemyProjectile.vy += 0.35;
+
+  enemyProjectile.x += enemyProjectile.vx;
+  enemyProjectile.y += enemyProjectile.vy;
+
+  const distanceToPlayer = Math.hypot(
+    enemyProjectile.x - player.x,
+    enemyProjectile.y - player.y
+  );
+
+  if (distanceToPlayer < 35) {
+
+    createExplosion(
+      enemyProjectile.x,
+      enemyProjectile.y,
+      "enemy"
+    );
+
+    enemyProjectile = null;
+
+    if (!gameOver) {
+      startPlayerTurn();
+    }
+
+    return;
+  }
+
+  if (
+    enemyProjectile &&
+    enemyProjectile.y >= groundY(enemyProjectile.x) - 5
+  ) {
+
+    createExplosion(
+      enemyProjectile.x,
+      groundY(enemyProjectile.x),
+      "enemy"
+    );
+
+    enemyProjectile = null;
+
+    if (!gameOver) {
+      startPlayerTurn();
+    }
+
+    return;
+  }
+
+  if (
+    enemyProjectile &&
+    (
+      enemyProjectile.x < -50 ||
+      enemyProjectile.x > canvas.width + 50 ||
+      enemyProjectile.y > canvas.height + 100
+    )
+  ) {
+
+    enemyProjectile = null;
+
+    if (!gameOver) {
+      startPlayerTurn();
+    }
+  }
+}
+
+function startPlayerTurn() {
+
+  if (gameOver) return;
+
+  turn = "player";
+
+  document.getElementById(
+    "turn"
+  ).textContent = "TU TURNO";
+
+  power = 0.1;
+
+  document.getElementById(
+    "powerFill"
+  ).style.width = "10%";
 }
 
 function update() {
@@ -441,7 +722,11 @@ function update() {
   enemy.y =
     groundY(enemy.x) - enemy.radius;
 
-  if (charging && !projectile) {
+  if (
+    charging &&
+    !projectile &&
+    turn === "player"
+  ) {
 
     power += 0.012;
 
@@ -455,55 +740,20 @@ function update() {
       (power * 100) + "%";
   }
 
-  if (projectile) {
+  updatePlayerProjectile();
 
-    projectile.vy += 0.35;
-
-    projectile.x += projectile.vx;
-    projectile.y += projectile.vy;
-
-    const distanceToEnemy = Math.hypot(
-      projectile.x - enemy.x,
-      projectile.y - enemy.y
-    );
-
-    if (distanceToEnemy < 35) {
-
-      createExplosion(
-        projectile.x,
-        projectile.y
-      );
-
-      projectile = null;
-    }
-
-    if (
-      projectile &&
-      projectile.y >= groundY(projectile.x) - 5
-    ) {
-
-      createExplosion(
-        projectile.x,
-        groundY(projectile.x)
-      );
-
-      projectile = null;
-    }
-
-    if (
-      projectile &&
-      (
-        projectile.x < -50 ||
-        projectile.x > canvas.width + 50 ||
-        projectile.y > canvas.height + 100
-      )
-    ) {
-
-      projectile = null;
-    }
-  }
+  updateEnemyProjectile();
 
   updateExplosion();
+
+  if (enemyThinking) {
+
+    enemyTimer--;
+
+    if (enemyTimer <= 0) {
+      enemyAttack();
+    }
+  }
 
   player.vx *= 0.85;
 }
@@ -588,22 +838,47 @@ function draw() {
     ctx.fill();
   }
 
+  if (enemyProjectile) {
+
+    ctx.fillStyle = "#7b1599";
+
+    ctx.beginPath();
+
+    ctx.arc(
+      enemyProjectile.x,
+      enemyProjectile.y,
+      8,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+  }
+
   drawExplosion();
 }
 
 function moveLeft() {
 
-  if (gameOver) return;
+  if (
+    gameOver ||
+    turn !== "player"
+  ) return;
 
   player.vx = -3;
+
   direction = -1;
 }
 
 function moveRight() {
 
-  if (gameOver) return;
+  if (
+    gameOver ||
+    turn !== "player"
+  ) return;
 
   player.vx = 3;
+
   direction = 1;
 }
 
@@ -618,7 +893,11 @@ function updateAim(clientX, clientY) {
   aimAngle =
     Math.atan2(dy, dx);
 
-  if (direction === -1 && aimAngle > 0) {
+  if (
+    direction === -1 &&
+    aimAngle > 0
+  ) {
+
     aimAngle =
       -Math.PI + Math.abs(aimAngle);
   }
@@ -628,12 +907,20 @@ function startCharge(event) {
 
   event.preventDefault();
 
-  if (projectile || gameOver) return;
+  if (
+    projectile ||
+    gameOver ||
+    turn !== "player"
+  ) return;
 
   charging = true;
+
   power = 0.1;
 
-  if (event.touches && event.touches.length > 0) {
+  if (
+    event.touches &&
+    event.touches.length > 0
+  ) {
 
     updateAim(
       event.touches[0].clientX,
@@ -648,7 +935,10 @@ function aimWhileTouching(event) {
 
   event.preventDefault();
 
-  if (event.touches && event.touches.length > 0) {
+  if (
+    event.touches &&
+    event.touches.length > 0
+  ) {
 
     updateAim(
       event.touches[0].clientX,
@@ -661,7 +951,12 @@ function releaseFire(event) {
 
   event.preventDefault();
 
-  if (!charging || projectile || gameOver) return;
+  if (
+    !charging ||
+    projectile ||
+    gameOver ||
+    turn !== "player"
+  ) return;
 
   charging = false;
 
@@ -714,6 +1009,8 @@ function restartGame() {
 
   projectile = null;
 
+  enemyProjectile = null;
+
   explosion = null;
 
   charging = false;
@@ -721,6 +1018,20 @@ function restartGame() {
   power = 0.1;
 
   gameOver = false;
+
+  turn = "player";
+
+  enemyThinking = false;
+
+  enemyTimer = 0;
+
+  document.getElementById(
+    "health"
+  ).textContent = "100";
+
+  document.getElementById(
+    "turn"
+  ).textContent = "TU TURNO";
 
   document.getElementById(
     "powerFill"
@@ -735,33 +1046,31 @@ function restartGame() {
   ).style.display = "none";
 }
 
-document
-  .getElementById("left")
-  .addEventListener(
-    "touchstart",
-    moveLeft
-  );
+const leftButton =
+  document.getElementById("left");
 
-document
-  .getElementById("right")
-  .addEventListener(
-    "touchstart",
-    moveRight
-  );
+const rightButton =
+  document.getElementById("right");
 
-document
-  .getElementById("left")
-  .addEventListener(
-    "mousedown",
-    moveLeft
-  );
+leftButton.addEventListener(
+  "touchstart",
+  moveLeft
+);
 
-document
-  .getElementById("right")
-  .addEventListener(
-    "mousedown",
-    moveRight
-  );
+rightButton.addEventListener(
+  "touchstart",
+  moveRight
+);
+
+leftButton.addEventListener(
+  "mousedown",
+  moveLeft
+);
+
+rightButton.addEventListener(
+  "mousedown",
+  moveRight
+);
 
 const fireButton =
   document.getElementById("fire");
@@ -826,4 +1135,4 @@ gameLoop();
 </script>
 
 </body>
-  </html>
+</html>
