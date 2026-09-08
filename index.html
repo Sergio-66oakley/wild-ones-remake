@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>Wild Ones Remake</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      touch-action: none;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
+    }
+
+    #game {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #87ceeb;
+    }
+
+    #hud {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+      text-shadow: 2px 2px 3px #000;
+      z-index: 10;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 10;
+    }
+
+    button {
+      border: 0;
+      border-radius: 50%;
+      width: 75px;
+      height: 75px;
+      font-size: 30px;
+      background: rgba(255,255,255,0.85);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+
+    #power {
+      position: fixed;
+      bottom: 105px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 180px;
+      z-index: 10;
+    }
+
+    #powerBar {
+      width: 100%;
+      height: 18px;
+      background: #333;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #powerFill {
+      width: 50%;
+      height: 100%;
+      background: #fff;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div>🪙 999999</div>
+  <div>🍪 999999</div>
+  <div>❤️ <span id="health">100</span></div>
+</div>
+
+<div id="power">
+  <div id="powerBar">
+    <div id="powerFill"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="left">◀</button>
+  <button id="fire">💥</button>
+  <button id="right">▶</button>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+resize();
+window.addEventListener("resize", resize);
+
+const player = {
+  x: 120,
+  y: 0,
+  radius: 25,
+  health: 100,
+  vx: 0,
+  vy: 0
+};
+
+const enemy = {
+  x: 0,
+  y: 0,
+  radius: 25,
+  health: 100
+};
+
+let projectile = null;
+let direction = 1;
+let power = 0.5;
+
+function groundY(x) {
+  return canvas.height * 0.72 +
+         Math.sin(x * 0.015) * 25 +
+         Math.sin(x * 0.006) * 35;
+}
+
+function drawGround() {
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height);
+
+  for (let x = 0; x <= canvas.width; x += 5) {
+    ctx.lineTo(x, groundY(x));
+  }
+
+  ctx.lineTo(canvas.width, canvas.height);
+  ctx.closePath();
+
+  ctx.fillStyle = "#5b9b45";
+  ctx.fill();
+}
+
+function drawAnimal(x, y, bodyColor, health) {
+  ctx.fillStyle = bodyColor;
+
+  ctx.beginPath();
+  ctx.arc(x, y, 25, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fff";
+
+  ctx.beginPath();
+  ctx.arc(x - 8, y - 6, 5, 0, Math.PI * 2);
+  ctx.arc(x + 8, y - 6, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#111";
+
+  ctx.beginPath();
+  ctx.arc(x - 8, y - 6, 2, 0, Math.PI * 2);
+  ctx.arc(x + 8, y - 6, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Barra de vida
+  ctx.fillStyle = "#222";
+  ctx.fillRect(x - 30, y - 42, 60, 6);
+
+  ctx.fillStyle = "#e33";
+  ctx.fillRect(x - 30, y - 42, 60 * (health / 100), 6);
+}
+
+function update() {
+  player.vy += 0.5;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  if (player.x < 30) player.x = 30;
+  if (player.x > canvas.width - 30) player.x = canvas.width - 30;
+
+  const ground = groundY(player.x);
+
+  if (player.y + player.radius >= ground) {
+    player.y = ground - player.radius;
+    player.vy = 0;
+  }
+
+  enemy.x = canvas.width - 120;
+  enemy.y = groundY(enemy.x) - enemy.radius;
+
+  if (projectile) {
+    projectile.vy += 0.35;
+    projectile.x += projectile.vx;
+    projectile.y += projectile.vy;
+
+    const enemyDistance = Math.hypot(
+      projectile.x - enemy.x,
+      projectile.y - enemy.y
+    );
+
+    if (enemyDistance < 35) {
+      enemy.health -= 25;
+      projectile = null;
+    }
+
+    if (
+      projectile &&
+      (projectile.x < 0 ||
+       projectile.x > canvas.width ||
+       projectile.y > canvas.height)
+    ) {
+      projectile = null;
+    }
+  }
+
+  player.vx *= 0.85;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Cielo
+  const gradient = ctx.createLinearGradient(
+    0, 0, 0, canvas.height
+  );
+
+  gradient.addColorStop(0, "#65b8e8");
+  gradient.addColorStop(1, "#d8f2ff");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Sol
+  ctx.fillStyle = "#ffd95a";
+  ctx.beginPath();
+  ctx.arc(canvas.width - 70, 70, 35, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawGround();
+
+  drawAnimal(
+    player.x,
+    player.y,
+    "#f2a23a",
+    player.health
+  );
+
+  drawAnimal(
+    enemy.x,
+    enemy.y,
+    "#b85cdb",
+    enemy.health
+  );
+
+  if (projectile) {
+    ctx.fillStyle = "#333";
+    ctx.beginPath();
+    ctx.arc(
+      projectile.x,
+      projectile.y,
+      8,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function moveLeft() {
+  player.vx = -3;
+  direction = -1;
+}
+
+function moveRight() {
+  player.vx = 3;
+  direction = 1;
+}
+
+function fire() {
+  if (projectile) return;
+
+  const angle = -0.65;
+
+  projectile = {
+    x: player.x + direction * 25,
+    y: player.y - 10,
+    vx: Math.cos(angle) * 8 * direction,
+    vy: Math.sin(angle) * 8
+  };
+}
+
+document.getElementById("left").addEventListener("touchstart", moveLeft);
+document.getElementById("right").addEventListener("touchstart", moveRight);
+document.getElementById("fire").addEventListener("touchstart", fire);
+
+document.getElementById("left").addEventListener("mousedown", moveLeft);
+document.getElementById("right").addEventListener("mousedown", moveRight);
+document.getElementById("fire").addEventListener("mousedown", fire);
+
+gameLoop();
+</script>
+
+</body>
+</html>
